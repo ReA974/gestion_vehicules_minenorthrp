@@ -49,7 +49,7 @@ public final class Shop {
     // ------------------------------------------------------------------ menus
 
     public static void openCategories(ServerPlayer p) {
-        if (GarageData.get(p.getServer()).shopPos == null) {
+        if (GarageData.get(p.getServer()).shopPos == null && !p.hasPermissions(2)) {
             Msg.send(p, "&cAucune zone de pose n'a été configurée. Un membre du staff doit faire /vehiclezone set.");
             return;
         }
@@ -82,17 +82,31 @@ public final class Shop {
             if (v.category.equals(cat)) models.computeIfAbsent(v.model, k -> new ArrayList<>()).add(v);
         }
         List<String> names = new ArrayList<>(models.keySet());
-        if (names.size() > 54) VehiclesMod.LOGGER.warn("[Vehicules] Catégorie {} : {} modèles, seuls 54 sont affichés.", cat, names.size());
-        ItemStack[] items = new ItemStack[Math.min(54, names.size())];
-        for (int i = 0; i < items.length; i++) {
+        if (names.size() > 53) VehiclesMod.LOGGER.warn("[Vehicules] Catégorie {} : {} modèles, seuls 53 sont affichés.", cat, names.size());
+
+        int count = Math.min(53, names.size());
+        int size = Math.min(54, Math.max(9, ((count + 8) / 9) * 9));
+        // Si l'inventaire est plein jusqu'à la dernière ligne, on s'assure d'avoir 54 slots pour placer le retour au slot 53
+        if (size < 54 && count % 9 == 0) size += 9;
+
+        ItemStack[] items = new ItemStack[size];
+        for (int i = 0; i < count; i++) {
             List<Catalog.Vehicle> vs = models.get(names.get(i));
             int min = Integer.MAX_VALUE;
             for (Catalog.Vehicle v : vs) min = Math.min(min, v.price);
             items[i] = Gui.item(Garage.iconOf(vs.get(0).item), "&e&l" + names.get(i),
                     "&7À partir de &a" + min + "€", "&7" + vs.size() + " couleur(s)");
         }
-        Gui.open(p, "&e" + cat, (items.length + 8) / 9, items, slot -> {
-            if (slot < names.size()) Gui.later(p, () -> openColors(p, cat, names.get(slot)));
+
+        int backSlot = size - 1;
+        items[backSlot] = Gui.item(Items.BARRIER, "&c&lRetour", "&7Revenir aux catégories");
+
+        Gui.open(p, "&e" + cat, size / 9, items, slot -> {
+            if (slot == backSlot) {
+                Gui.later(p, () -> openCategories(p));
+            } else if (slot < count) {
+                Gui.later(p, () -> openColors(p, cat, names.get(slot)));
+            }
         });
     }
 
@@ -101,18 +115,31 @@ public final class Shop {
         for (Catalog.Vehicle v : Catalog.VEHICLES) {
             if (v.category.equals(cat) && v.model.equals(model)) list.add(v);
         }
-        ItemStack[] items = new ItemStack[Math.min(54, list.size())];
-        for (int i = 0; i < items.length; i++) {
+
+        int count = Math.min(53, list.size());
+        int size = Math.min(54, Math.max(9, ((count + 8) / 9) * 9));
+        if (size < 54 && count % 9 == 0) size += 9;
+
+        ItemStack[] items = new ItemStack[size];
+        for (int i = 0; i < count; i++) {
             Catalog.Vehicle v = list.get(i);
             Item glass = registryItem(Catalog.COLOR_ICON.getOrDefault(v.color, "minecraft:white_stained_glass"));
             items[i] = Gui.item(glass == Items.AIR ? Items.WHITE_STAINED_GLASS : glass,
                     "&e&l" + v.color + " &7- &a" + v.price + "€");
         }
-        Gui.open(p, "&0" + model, (items.length + 8) / 9, items, slot -> {
-            if (slot < list.size()) Gui.later(p, () -> {
-                p.closeContainer();
-                buy(p, list.get(slot));
-            });
+
+        int backSlot = size - 1;
+        items[backSlot] = Gui.item(Items.BARRIER, "&c&lRetour", "&7Revenir au modèle");
+
+        Gui.open(p, "&0" + model, size / 9, items, slot -> {
+            if (slot == backSlot) {
+                Gui.later(p, () -> openModels(p, cat));
+            } else if (slot < count) {
+                Gui.later(p, () -> {
+                    p.closeContainer();
+                    buy(p, list.get(slot));
+                });
+            }
         });
     }
 

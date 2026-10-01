@@ -14,6 +14,6 @@ public class VehiclesMod {
 
     public VehiclesMod() {
         // config/minenorth-vehicles.toml  (+ config/minenorth_vehicles/catalog.json)
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, VehicleConfig.SPEC, "minenorth-vehicles.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, VehicleConfig.SPEC, "minenorth-garage.toml");
     }
 }
