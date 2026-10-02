@@ -1,5 +1,6 @@
 package com.minenorth.vehicles.miscs;
 
+import com.minenorth.vehicles.VehiclesMod;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
@@ -14,13 +15,17 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import java.util.function.IntConsumer;
+import static com.minenorth.vehicles.config.VehicleConfig.THEMED_GUI;
 
 /** Coffre-GUI 100 % serveur (le client vanilla suffit) : tous les clics sont annulés, seul le slot cliqué est remonté. */
 public final class Gui extends ChestMenu {
     private final int size;
     private final IntConsumer onClick;
+    private static final ResourceLocation FONT = new ResourceLocation(VehiclesMod.MODID, "gui");
 
     private Gui(MenuType<?> type, int id, Inventory inv, Container c, int rows, IntConsumer onClick) {
         super(type, id, inv, c, rows);
@@ -44,6 +49,19 @@ public final class Gui extends ChestMenu {
         return true;
     }
 
+    // New gui
+    public static Component themedTitle(String raw, int rows) {
+        if (!THEMED_GUI.get()) return comp(raw);
+        String plain = raw.replaceAll("(?i)[&\u00a7][0-9a-fk-or]", "");
+        MutableComponent bg = Component.literal("\uF000" + (char) (0xE000 + rows) + "\uF001")
+                .withStyle(s -> s.withFont(FONT).withColor(0xFFFFFF));
+        MutableComponent txt = Component.literal(plain)
+                .withStyle(s -> s.withFont(Style.DEFAULT_FONT).withColor(0x9AD8FF));
+        return bg.append(txt);
+    }
+
+
+    // old gui chest
     public static Component comp(String s) {
         return Component.literal(s.replace('&', '\u00a7')).withStyle(st -> st.withItalic(false));
     }
@@ -71,7 +89,7 @@ public final class Gui extends ChestMenu {
             case 5 -> MenuType.GENERIC_9x5;
             default -> MenuType.GENERIC_9x6;
         };
-        p.openMenu(new SimpleMenuProvider((id, inv, pl) -> new Gui(type, id, inv, c, r, onClick), comp(title)));
+        p.openMenu(new SimpleMenuProvider((id, inv, pl) -> new Gui(type, id, inv, c, r, onClick), themedTitle(title, r)));
     }
 
     /** Exécute après le clic courant (évite d'ouvrir/fermer un menu pendant son propre traitement). */

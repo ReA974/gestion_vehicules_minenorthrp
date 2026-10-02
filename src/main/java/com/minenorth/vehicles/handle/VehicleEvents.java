@@ -104,7 +104,7 @@ public final class VehicleEvents {
                 continue;
             }
             if (IN_ZONE.add(id)) Msg.send(p, enterMessage(z));
-
+            /* Permet d'ouvrir le garage quand on rentre dans la zone mais je ne suis pas fan du rendu au final
             if (!VehicleConfig.AUTO_PROMPT.get() || PROMPTED.contains(id) || p.containerMenu != p.inventoryMenu) continue;
             Entity v = MtsBridge.vehicleOf(p);
             if (v == null) {
@@ -112,10 +112,11 @@ public final class VehicleEvents {
                 continue;
             }
             Vec3 last = LAST.put(id, v.position());
+
             if (last != null && last.distanceTo(v.position()) <= VehicleConfig.PROMPT_MAX_MOVE.get()) {
                 PROMPTED.add(id); // une seule proposition par passage dans la zone
                 Garage.promptStore(p, v);
-            }
+            }*/
         }
     }
 

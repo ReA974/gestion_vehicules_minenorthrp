@@ -19,7 +19,7 @@ public final class VehicleConfig {
     public static final ForgeConfigSpec.ConfigValue<String> ENTER_DEFAULT, LEAVE_MSG;
     public static final ForgeConfigSpec.IntValue COMMAND_LEVEL, GARAGE_MAX, CHECK_INTERVAL, SEARCH_RADIUS, PLACE_TIMEOUT;
     public static final ForgeConfigSpec.DoubleValue DEFAULT_ZONE_RADIUS, SHOP_PLACE_RADIUS, PROMPT_MAX_MOVE;
-    public static final ForgeConfigSpec.BooleanValue AUTO_PROMPT, GIVE_KEY;
+    public static final ForgeConfigSpec.BooleanValue AUTO_PROMPT, GIVE_KEY, THEMED_GUI;
 
     public record Denom(Item item, int value) {}
 
@@ -38,6 +38,8 @@ public final class VehicleConfig {
         KEY_ITEM = b.comment("Item clé donné avec un véhicule (vérifie l'id avec F3+H)").define("keyItem", "mts:mts.key");
         KEY_NAME_PREFIX = b.comment("Préfixe du nom de la clé (sert à retirer la clé au rangement)").define("keyNamePrefix", "Clé -");
         GIVE_KEY = b.define("giveKey", true);
+        THEMED_GUI = b.comment("Habillage des menus avec le logo MineNorth (nécessite le jar ou le resource pack côté client)")
+                .define("themedGui", true);
         SEARCH_RADIUS = b.comment("Rayon de recherche du véhicule autour du siège (blocs)").defineInRange("seatSearchRadius", 12, 2, 64);
         b.pop();
 

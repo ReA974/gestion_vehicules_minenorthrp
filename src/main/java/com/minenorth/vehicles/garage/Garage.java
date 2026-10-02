@@ -13,10 +13,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -96,7 +99,7 @@ public final class Garage {
         s.itemId = MtsBridge.itemId(snap);
         s.label = labelOf(s.itemId, snap);
 
-        if (actor.getVehicle() != null) actor.stopRiding();
+        if (actor.getVehicle() != null && vehicle == MtsBridge.vehicleOf(actor)) actor.stopRiding();
         vehicle.discard();
         list.add(s);
         data.setDirty();
@@ -106,46 +109,82 @@ public final class Garage {
     }
 
     public static void storeNearby(ServerPlayer p) {
-        Entity v = MtsBridge.vehicleOf(p);
-        if (v == null) {
-            v = MtsBridge.nearest((ServerLevel) p.level(), p.position(), VehicleConfig.SEARCH_RADIUS.get(), p.getUUID());
+        chooseAndStore(p, p.getUUID(), false);
+    }
+
+    /** Véhicules/remorques rangeables à proximité : les siens + celui où il est assis (tous si admin). */
+    private static List<Entity> candidates(ServerPlayer p, boolean admin) {
+        ServerLevel level = (ServerLevel) p.level();
+        AABB box = p.getBoundingBox().inflate(VehicleConfig.SEARCH_RADIUS.get());
+        Entity seat = MtsBridge.vehicleOf(p);
+        List<Entity> out = new ArrayList<>();
+        for (Entity e : level.getEntities((Entity) null, box, MtsBridge::isVehicle)) {
+            if (admin || e == seat || p.getUUID().equals(MtsBridge.ownerOf(e))) out.add(e);
         }
-        if (v == null) {
-            Msg.send(p, "&cAucun de tes véhicules à proximité. Rapproche-toi de ton véhicule.");
+        out.sort(Comparator.comparingDouble(e -> e.distanceToSqr(p)));
+        return out;
+    }
+
+    public static void chooseAndStore(ServerPlayer p, UUID target, boolean admin) {
+        List<Entity> list = candidates(p, admin);
+        if (list.isEmpty()) {
+            Msg.send(p, "&cAucun véhicule ou remorque à toi à moins de " + VehicleConfig.SEARCH_RADIUS.get() + " blocs.");
             return;
         }
-        storeInto(p, v, p.getUUID(), false);
+        if (list.size() == 1) {
+            storeInto(p, list.get(0), target, admin);
+            return;
+        }
+        int n = Math.min(54, list.size());
+        ItemStack[] items = new ItemStack[n];
+        for (int i = 0; i < n; i++) {
+            Entity e = list.get(i);
+            CompoundTag snap = MtsBridge.snapshot(e);
+            String id = MtsBridge.itemId(snap);
+            items[i] = Gui.item(iconOf(id), "&e&l" + labelOf(id, snap),
+                    "&7Distance : &f" + (int) e.distanceTo(p) + " blocs", "&7Clique pour le ranger");
+        }
+        Gui.open(p, "&aQuel véhicule ranger ?", (n + 8) / 9, items, slot -> {
+            if (slot < n) Gui.later(p, () -> {
+                p.closeContainer();
+                Entity e = list.get(slot);
+                if (!e.isRemoved()) storeInto(p, e, target, admin);
+            });
+        });
     }
 
     // ------------------------------------------------------------------ sortie
 
     public static void retrieve(ServerPlayer p, int index) {
-        if (zoneAt(p) == null) {
+        // 1. On récupère la zone où se trouve le joueur
+        GarageData.Zone zone = zoneAt(p);
+        if (zone == null) {
             Msg.send(p, "&cTu dois être dans une zone garage.");
             return;
         }
+
         GarageData data = GarageData.get(p.getServer());
         List<GarageData.Stored> list = data.of(p.getUUID());
         if (index < 0 || index >= list.size()) return;
         GarageData.Stored s = list.get(index);
 
         ServerLevel level = (ServerLevel) p.level();
-        Vec3 look = p.getLookAngle();
-        double len = Math.max(0.001, Math.sqrt(look.x * look.x + look.z * look.z));
-        double x = p.getX() + look.x / len * 3.0;
-        double z = p.getZ() + look.z / len * 3.0;
 
-        Entity e = MtsBridge.restore(level, s.nbt, x, p.getY(), z);
+        double spawnX = zone.x;
+        double spawnZ = zone.z;
+
+        Entity e = MtsBridge.restore(level, s.nbt, spawnX, p.getY(), spawnZ);
         if (e == null) {
             Msg.send(p, "&cImpossible de recréer ce véhicule (entité MTS introuvable ?). Il reste dans ton garage.");
             return;
         }
+
         MtsBridge.setOwner(e, p.getUUID());
         level.addFreshEntityWithPassengers(e);
         list.remove(index);
         data.setDirty();
         giveKey(p, s.label);
-        Msg.send(p, "&aVéhicule récupéré, intact ! Il t'attend devant toi.");
+        Msg.send(p, "&aVéhicule récupéré ! Il t'attend au centre de la zone.");
     }
 
     // ------------------------------------------------------------------ menus

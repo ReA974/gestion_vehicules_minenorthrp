@@ -17,6 +17,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -39,7 +40,11 @@ public final class VehicleCommands {
     }
 
     private static void say(CommandSourceStack s, String msg) {
-        s.sendSuccess(() -> Gui.comp(VehicleConfig.PREFIX.get() + " " + msg), false);
+        // 1. On applique le préfixe et on remplace les codes de couleur '&' par '§'
+        String fullMsg = (VehicleConfig.PREFIX.get() + " " + msg).replace('&', '§');
+
+        // 2. On envoie directement le message système à l'entité source (joueur ou console)
+        s.sendSystemMessage(Component.literal(fullMsg));
     }
 
     @SubscribeEvent
@@ -157,9 +162,15 @@ public final class VehicleCommands {
 
     private static int listZones(CommandSourceStack s) {
         GarageData g = GarageData.get(s.getServer());
-        say(s, "&eGarages définis :");
+        VehiclesMod.LOGGER.warn("[Vehicules] Garage trouvé : {}", g);
+        if (g.zones.isEmpty()) {
+            say(s, "&eAucune zone garage définie. Place-toi au centre et fais /garagezone <nom> [rayon] [tag].");
+            return 0;
+        }
+        say(s, "&eGarages définis (" + g.zones.size() + ") :");
         for (GarageData.Zone z : g.zones.values()) {
-            say(s, "&7- " + z.name + " &8(" + (z.tag.isEmpty() ? "public" : z.tag) + ", " + z.radius + " blocs)");
+            say(s, String.format(java.util.Locale.ROOT, "&7- &f%s &8| %s | %.0f %.0f %.0f | rayon %.1f | %s",
+                    z.name, z.dim, z.x, z.y, z.z, z.radius, z.tag.isEmpty() ? "public" : z.tag));
         }
         return g.zones.size();
     }
@@ -221,13 +232,8 @@ public final class VehicleCommands {
     private static int adminAdd(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
         GameProfile gp = target(c);
-        Entity v = MtsBridge.vehicleOf(p);
-        if (v == null) v = MtsBridge.nearest((ServerLevel) p.level(), p.position(), 8, null);
-        if (v == null) {
-            Msg.send(p, "&cMonte dans le véhicule ou place-toi à côté avant de faire cette commande.");
-            return 0;
-        }
-        return Garage.storeInto(p, v, gp.getId(), true) ? 1 : 0;
+        Garage.chooseAndStore(p, gp.getId(), true);
+        return 1;
     }
 
     private static int adminReset(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
