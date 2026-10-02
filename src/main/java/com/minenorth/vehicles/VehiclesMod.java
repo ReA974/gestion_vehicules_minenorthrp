@@ -1,6 +1,7 @@
 package com.minenorth.vehicles;
 
 import com.minenorth.vehicles.config.VehicleConfig;
+import com.minenorth.vehicles.fourriere.ImpoundConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -13,7 +14,7 @@ public class VehiclesMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public VehiclesMod() {
-        // config/minenorth-vehicles.toml  (+ config/minenorth_vehicles/catalog.json)
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, VehicleConfig.SPEC, "minenorth-garage.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ImpoundConfig.SPEC, "minenorth-fourriere.toml");
     }
 }

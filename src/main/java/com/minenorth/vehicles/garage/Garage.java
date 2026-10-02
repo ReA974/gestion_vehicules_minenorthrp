@@ -173,14 +173,11 @@ public final class Garage {
         double spawnX = zone.x;
         double spawnZ = zone.z;
 
-        Entity e = MtsBridge.restore(level, s.nbt, spawnX, p.getY(), spawnZ);
+        Entity e = Spawner.spawn(level, s.nbt, zone.x, zone.y, zone.z, p.getUUID());
         if (e == null) {
             Msg.send(p, "&cImpossible de recréer ce véhicule (entité MTS introuvable ?). Il reste dans ton garage.");
             return;
         }
-
-        MtsBridge.setOwner(e, p.getUUID());
-        level.addFreshEntityWithPassengers(e);
         list.remove(index);
         data.setDirty();
         giveKey(p, s.label);
