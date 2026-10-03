@@ -9,6 +9,7 @@ import com.minenorth.vehicles.handle.MtsBridge;
 import com.minenorth.vehicles.miscs.Gui;
 import com.minenorth.vehicles.miscs.Msg;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -21,18 +22,13 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.registries.ForgeRegistries;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public final class Shop {
     public static final class Waiting {
         public String itemId;
         public long expireTick;
+        public String plate;
     }
 
     /** Joueurs qui ont acheté et doivent poser leur véhicule dans la zone de pose. */
@@ -161,29 +157,72 @@ public final class Shop {
             Msg.send(p, "&cItem du véhicule introuvable : " + v.item + " (voir catalog.json, /vehicleshop check).");
             return;
         }
-        List<VehicleConfig.Denom> den = VehicleConfig.currency();
+        List den = VehicleConfig.currency();
         int total = Money.count(p, den);
         if (total < v.price) {
             Msg.send(p, "&cIl te manque " + (v.price - total) + "€ pour acheter ce véhicule (" + v.price + "€, tu as " + total + "€).");
             return;
         }
         Money.take(p, v.price, den);
-        ItemHandlerHelper.giveItemToPlayer(p, new ItemStack(it));
+
+        // 1. Génération de la plaque
+        String plate = generatePlate();
+
+        // 2. Donner l'item du véhicule (tel quel pour préserver la physique/définition MTS)
+        ItemStack vehicleStack = new ItemStack(it);
+        ItemHandlerHelper.giveItemToPlayer(p, vehicleStack);
+
+        // 3. Give de 2 Plaques d'immatriculation MTS (mts:gvp.eu_plate)
+        Item plateItem = registryItem("mts:gvp.eu_plate");
+        if (plateItem != Items.AIR) {
+            ItemStack plateStack = new ItemStack(plateItem, 2); // Quantité : 2
+            CompoundTag plateNbt = plateStack.getOrCreateTag();
+
+            // NBT utilisé par MTS pour le texte de la plaque
+            plateNbt.putString("textCode", plate);
+            plateNbt.putString("textCountry Code", "FR");
+
+            // Nom affiché dans l'inventaire
+            plateStack.setHoverName(Gui.comp("&fPlaque : &e" + plate));
+
+            ItemHandlerHelper.giveItemToPlayer(p, plateStack);
+        }
 
         String label = v.model + (v.color.equals("Défaut") ? "" : " (" + v.color + ")");
+
+        // 4. Clé du véhicule
         if (VehicleConfig.GIVE_KEY.get()) {
             Item k = registryItem(VehicleConfig.KEY_ITEM.get());
             if (k != Items.AIR) {
                 ItemStack key = new ItemStack(k);
-                key.setHoverName(Gui.comp("&e&l" + VehicleConfig.KEY_NAME_PREFIX.get() + " " + label));
+                CompoundTag keyNbt = key.getOrCreateTag();
+                keyNbt.putString("plateTag", plate);
+
+                key.setHoverName(Gui.comp("&e&l" + VehicleConfig.KEY_NAME_PREFIX.get() + " " + label + " &7[" + plate + "]"));
                 ItemHandlerHelper.giveItemToPlayer(p, key);
             }
         }
+
+        // 5. File d'attente
         Waiting w = new Waiting();
         w.itemId = v.item;
+        w.plate = plate;
         w.expireTick = server.getTickCount() + VehicleConfig.PLACE_TIMEOUT.get() * 20L;
         WAITING.put(p.getUUID(), w);
-        Msg.send(p, "&a" + label + " achetée pour " + v.price + "€ ! Va poser ton véhicule sur la zone marquée au parking.");
+
+        Msg.send(p, "&a" + label + " achetée pour " + v.price + "€ ! Reçu avec 2 plaques [&e" + plate + "&a].");
+    }
+
+    // Méthode pour générer une plaque aléatoire style français
+    private static String generatePlate() {
+        String letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Exclusion des lettres ambiguës I/O
+        Random r = new Random();
+        char l1 = letters.charAt(r.nextInt(letters.length()));
+        char l2 = letters.charAt(r.nextInt(letters.length()));
+        char l3 = letters.charAt(r.nextInt(letters.length()));
+        char l4 = letters.charAt(r.nextInt(letters.length()));
+        int num = r.nextInt(900) + 100;
+        return "" + l1 + l2 + "-" + num + "-" + l3 + l4;
     }
 
     // ------------------------------------------------------------------ pose
