@@ -23,11 +23,17 @@ import static com.minenorth.vehicles.config.VehicleConfig.THEMED_GUI;
 
 /** Coffre-GUI 100 % serveur (le client vanilla suffit) : tous les clics sont annulés, seul le slot cliqué est remonté. */
 public final class Gui extends ChestMenu {
+    /** Clic sur un slot : button = 0 (gauche) ou 1 (droit). */
+    @FunctionalInterface
+    public interface SlotClick {
+        void click(int slot, int button);
+    }
+
     private final int size;
-    private final IntConsumer onClick;
+    private final SlotClick onClick;
     private static final ResourceLocation FONT = new ResourceLocation(VehiclesMod.MODID, "gui");
 
-    private Gui(MenuType<?> type, int id, Inventory inv, Container c, int rows, IntConsumer onClick) {
+    private Gui(MenuType<?> type, int id, Inventory inv, Container c, int rows, SlotClick onClick) {
         super(type, id, inv, c, rows);
         this.size = rows * 9;
         this.onClick = onClick;
@@ -35,7 +41,7 @@ public final class Gui extends ChestMenu {
 
     @Override
     public void clicked(int slot, int button, ClickType type, Player player) {
-        if (slot >= 0 && slot < size && type != ClickType.QUICK_CRAFT) onClick.accept(slot);
+        if (slot >= 0 && slot < size && type != ClickType.QUICK_CRAFT) onClick.click(slot, button);
         this.sendAllDataToRemote();
     }
 
@@ -77,7 +83,12 @@ public final class Gui extends ChestMenu {
         return st;
     }
 
+    /** Version historique : ne remonte que le slot. */
     public static void open(ServerPlayer p, String title, int rows, ItemStack[] items, IntConsumer onClick) {
+        open(p, title, rows, items, (SlotClick) (slot, button) -> onClick.accept(slot));
+    }
+
+    public static void open(ServerPlayer p, String title, int rows, ItemStack[] items, SlotClick onClick) {
         final int r = Math.max(1, Math.min(6, rows));
         SimpleContainer c = new SimpleContainer(r * 9);
         for (int i = 0; i < items.length && i < r * 9; i++) if (items[i] != null) c.setItem(i, items[i]);

@@ -189,6 +189,7 @@ Writing Output: C:\Users\diabl\Documents\Mes documents\minenorthrp\workspace mod
   com/minenorth/vehicles/handle/VehicleEvents$Check.class
   com/minenorth/vehicles/handle/VehicleEvents.class
   com/minenorth/vehicles/miscs/
+  com/minenorth/vehicles/miscs/Gui$SlotClick.class
   com/minenorth/vehicles/miscs/Gui.class
   com/minenorth/vehicles/miscs/Msg.class
   com/minenorth/vehicles/miscs/VehicleCommands.class

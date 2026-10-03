@@ -5,9 +5,12 @@ import com.minenorth.vehicles.garage.Garage;
 import com.minenorth.vehicles.garage.GarageData;
 import com.minenorth.vehicles.garage.Spawner;
 import com.minenorth.vehicles.handle.Money;
+import com.minenorth.vehicles.handle.EconomyBridge;
 import com.minenorth.vehicles.handle.MtsBridge;
+import com.minenorth.vehicles.handle.Payment;
 import com.minenorth.vehicles.miscs.Gui;
 import com.minenorth.vehicles.miscs.Msg;
+import com.minenorth_eurobank.api.PayResult;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -103,17 +106,55 @@ public final class Impound {
         for (int i = 0; i < n; i++) {
             GarageData.Stored s = list.get(i);
             items[i] = Gui.item(Garage.iconOf(s.itemId), "&e&l" + s.label,
-                    "&c" + price + "€ pour récupérer", "&8Intact : pièces, carburant et coffres conservés");
+                    "&c" + price + "€ pour récupérer", "&8Intact : pièces, carburant et coffres conservés",
+                    "&7Clique pour choisir le mode de paiement");
         }
         Gui.open(p, "&cVéhicules en fourrière", (n + 8) / 9, items, slot -> {
-            if (slot < n) Gui.later(p, () -> {
-                p.closeContainer();
-                recover(p, slot);
-            });
+            if (slot < n) Gui.later(p, () -> openRecoverPayment(p, slot));
         });
     }
 
+    /** Choix du mode de paiement pour récupérer un véhicule : espèces ou carte, avec l'état de chacun. */
+    private static void openRecoverPayment(ServerPlayer p, int index) {
+        List<GarageData.Stored> list = ImpoundData.get(p.getServer()).of(p.getUUID());
+        if (index < 0 || index >= list.size()) return;
+        GarageData.Stored s = list.get(index);
+        int price = ImpoundConfig.PRICE.get();
+        List<VehicleConfig.Denom> den = VehicleConfig.currency();
+        int cash = Money.count(p, den);
+        PayResult card = Payment.cardStatus(p, price);
+
+        ItemStack[] items = new ItemStack[9];
+        items[4] = Gui.item(Garage.iconOf(s.itemId), "&e&l" + s.label, "&7Prix : &c" + price + "€");
+        Item cashIcon = VehicleConfig.item("minenorth_eurobank:bill_50e");
+        items[2] = Gui.item(cashIcon == Items.AIR ? Items.GOLD_INGOT : cashIcon, "&a&lPayer en espèces",
+                "&7Espèces sur toi : &f" + cash + "€",
+                cash >= price ? "&aClique pour payer" : "&cEspèces insuffisantes");
+        Item cardIcon = VehicleConfig.item("minenorth_eurobank:bank_card");
+        String cardLine = card == PayResult.OK ? "&aClique pour payer"
+                : "&c" + (card == PayResult.INSUFFICIENT_FUNDS ? "Solde insuffisant" : card.message());
+        items[6] = Gui.item(cardIcon == Items.AIR ? Items.PAPER : cardIcon, "&b&lPayer par carte",
+                "&7Solde du compte : &f" + EconomyBridge.balance(p) + "€", cardLine);
+        items[8] = Gui.item(Items.ARROW, "&c« Retour");
+        Gui.open(p, "&cRécupération", 1, items, slot -> {
+            if (slot == 2) Gui.later(p, () -> {
+                p.closeContainer();
+                recover(p, index, Payment.Method.CASH);
+            });
+            else if (slot == 6) Gui.later(p, () -> {
+                p.closeContainer();
+                recover(p, index, Payment.Method.CARD);
+            });
+            else if (slot == 8) Gui.later(p, () -> openRecoverMenu(p));
+        });
+    }
+
+    /** Compatibilité : paiement en espèces. */
     public static void recover(ServerPlayer p, int index) {
+        recover(p, index, Payment.Method.CASH);
+    }
+
+    public static void recover(ServerPlayer p, int index, Payment.Method method) {
         MinecraftServer server = p.getServer();
         ImpoundData d = ImpoundData.get(server);
         if (!d.hasZone) {
@@ -126,9 +167,9 @@ public final class Impound {
 
         int price = ImpoundConfig.PRICE.get();
         List<VehicleConfig.Denom> den = VehicleConfig.currency();
-        int total = Money.count(p, den);
-        if (total < price) {
-            Msg.send(p, "&cIl te manque " + (price - total) + "€ pour récupérer ce véhicule (" + price + "€, tu as " + total + "€).");
+        String err = Payment.precheck(p, price, method, den, "pour récupérer ce véhicule");
+        if (err != null) {
+            Msg.send(p, "&c" + err);
             return;
         }
         ResourceLocation rl = ResourceLocation.tryParse(d.zoneDim);
@@ -142,11 +183,17 @@ public final class Impound {
             Msg.send(p, "&cImpossible de recréer ce véhicule (entité MTS introuvable ?). Il reste en fourrière, tu n'as pas été débité.");
             return;
         }
-        Money.take(p, price, den);
+        Payment.Result paid = Payment.pay(p, price, method, den);
+        if (!paid.ok()) {
+            e.discard();
+            Msg.send(p, "&c" + paid.message());
+            return;
+        }
         list.remove(index);
         d.setDirty();
         giveKey(p, s.label);
-        Msg.send(p, "&aVéhicule récupéré pour " + price + "€, intact ! Il t'attend à la fourrière.");
+        Msg.send(p, "&aVéhicule récupéré pour " + price + "€ (" + (method == Payment.Method.CARD ? "carte" : "espèces")
+                + "), intact ! Il t'attend à la fourrière.");
     }
 
     private static void giveKey(ServerPlayer p, String label) {

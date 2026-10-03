@@ -44,15 +44,17 @@ public final class VehicleConfig {
         b.pop();
 
         b.comment("Vendeur").push("shop");
-        CURRENCY = b.comment("Billets acceptés : \"id=valeur\"")
+        CURRENCY = b.comment("Billets et pièces acceptés en espèces : \"id=valeur\" (valeur en euros entiers).")
                 .defineList("currency", Arrays.asList(
-                        "bubusteinmoneymod:five_hundred_euros=500",
-                        "bubusteinmoneymod:two_hundred_euros=200",
-                        "bubusteinmoneymod:hundred_euros=100",
-                        "bubusteinmoneymod:fifty_euros=50",
-                        "bubusteinmoneymod:twenty_euros=20",
-                        "bubusteinmoneymod:ten_euros=10",
-                        "bubusteinmoneymod:five_euros=5"), o -> o instanceof String);
+                        "minenorth_eurobank:bill_500e=500",
+                        "minenorth_eurobank:bill_200e=200",
+                        "minenorth_eurobank:bill_100e=100",
+                        "minenorth_eurobank:bill_50e=50",
+                        "minenorth_eurobank:bill_20e=20",
+                        "minenorth_eurobank:bill_10e=10",
+                        "minenorth_eurobank:bill_5e=5",
+                        "minenorth_eurobank:coin_2e=2",
+                        "minenorth_eurobank:coin_1e=1"), o -> o instanceof String);
         SHOP_PLACE_RADIUS = b.comment("Distance max (blocs) entre le centre de la zone de pose et le véhicule posé")
                 .defineInRange("placeRadius", 2.5, 0.5, 32.0);
         PLACE_TIMEOUT = b.comment("Secondes avant que la zone de pose soit libérée si le véhicule n'est pas posé")

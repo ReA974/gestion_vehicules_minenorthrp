@@ -130,7 +130,6 @@ dependencies {
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-
     // API du mod d'économie (paiement par carte)
     compileOnly files('libs/minenorth_eurobank-1.0.0.jar')
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings

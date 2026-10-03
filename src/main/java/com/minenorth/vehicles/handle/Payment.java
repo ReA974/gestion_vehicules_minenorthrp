@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * Point d'entrée unique pour payer un achat du garage : espèces (billets configurés) ou carte bancaire.
- * Utilisable pour le vendeur de véhicules comme pour la fourrière.
+ * Utilisé par le vendeur de véhicules et par la fourrière.
  */
 public final class Payment {
     public enum Method { CASH, CARD }
@@ -18,9 +18,32 @@ public final class Payment {
 
     private Payment() {}
 
-    /** Le joueur peut-il payer par carte ? (pour griser le bouton « Carte ») */
+    /** Le joueur peut-il payer par carte ? */
     public static PayResult cardStatus(ServerPlayer p, int price) {
         return EconomyBridge.check(p, price);
+    }
+
+    /**
+     * Vérifie qu'on peut payer, sans rien débiter.
+     * @param purpose complément de phrase, ex. "pour acheter ce véhicule"
+     * @return le message d'erreur à afficher (sans couleur), ou null si le paiement est possible
+     */
+    public static String precheck(ServerPlayer p, int price, Method method, List<VehicleConfig.Denom> den, String purpose) {
+        if (price <= 0) return null;
+        if (method == Method.CARD) {
+            PayResult st = EconomyBridge.check(p, price);
+            if (st == PayResult.OK) return null;
+            if (st == PayResult.INSUFFICIENT_FUNDS) {
+                long bal = EconomyBridge.balance(p);
+                return "Solde insuffisant : il te manque " + (price - bal) + "€ " + purpose + " (" + price + "€, solde " + bal + "€).";
+            }
+            return st.message();
+        }
+        int total = Money.count(p, den);
+        if (total < price) {
+            return "Il te manque " + (price - total) + "€ " + purpose + " (" + price + "€, tu as " + total + "€).";
+        }
+        return null;
     }
 
     /** Débite le joueur selon le mode choisi. Si ok == false, rien n'a été retiré. */
@@ -35,7 +58,7 @@ public final class Payment {
         return new Result(true, "");
     }
 
-    /** Annule un paiement (ex. le véhicule n'a pas pu être livré). Espèces : rendues en coupures, grosses d'abord. */
+    /** Annule un paiement. Espèces : rendues en coupures, grosses d'abord. */
     public static void refund(ServerPlayer p, int price, Method method, List<VehicleConfig.Denom> den) {
         if (price <= 0) return;
         if (method == Method.CARD) {
