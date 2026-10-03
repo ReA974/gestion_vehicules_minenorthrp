@@ -6,7 +6,6 @@ import com.minenorth.vehicles.config.VehicleConfig;
 import com.minenorth.vehicles.garage.Garage;
 import com.minenorth.vehicles.garage.GarageData;
 import com.minenorth.vehicles.shop.Catalog;
-import com.minenorth.vehicles.shop.Shop;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -52,7 +51,6 @@ public final class VehicleEvents {
         IN_ZONE.remove(id);
         PROMPTED.remove(id);
         LAST.remove(id);
-        Shop.WAITING.remove(id);
     }
 
     /** Véhicule MTS qui apparaît : on vérifie quelques ticks plus tard (position définitive) s'il s'agit d'un achat. */
@@ -60,7 +58,6 @@ public final class VehicleEvents {
     public static void onJoin(EntityJoinLevelEvent e) {
         if (e.getLevel().isClientSide() || e.loadedFromDisk()) return;
         Entity ent = e.getEntity();
-        if (Shop.WAITING.isEmpty() || !MtsBridge.isVehicle(ent)) return;
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
         CHECKS.add(new Check(ent, server.getTickCount() + 5));
@@ -72,22 +69,6 @@ public final class VehicleEvents {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
         long now = server.getTickCount();
-
-        // --- poses d'achat en attente de vérification ---
-        if (!CHECKS.isEmpty()) {
-            List<Check> due = new ArrayList<>();
-            Iterator<Check> it = CHECKS.iterator();
-            while (it.hasNext()) {
-                Check c = it.next();
-                if (c.dueTick() <= now) {
-                    due.add(c);
-                    it.remove();
-                }
-            }
-            for (Check c : due) Shop.onVehiclePlaced(server, c.entity());
-        }
-
-        Shop.tick(server);
 
         // --- zones garage ---
         if (now % VehicleConfig.CHECK_INTERVAL.get() != 0) return;

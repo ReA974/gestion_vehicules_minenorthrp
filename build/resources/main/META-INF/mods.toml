@@ -31,4 +31,11 @@ versionRange = "[0,)"
 ordering = "AFTER"
 side = "BOTH"
 
+[[dependencies.minenorth_rp_vehicles]]
+modId = "minenorth_eurobank"
+mandatory = true
+versionRange="[1.0.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
 

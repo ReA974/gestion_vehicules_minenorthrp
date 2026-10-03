@@ -6,7 +6,7 @@ import com.minenorth.vehicles.config.VehicleConfig;
 import com.minenorth.vehicles.garage.Garage;
 import com.minenorth.vehicles.garage.GarageData;
 import com.minenorth.vehicles.shop.Catalog;
-import com.minenorth.vehicles.shop.Shop;
+import com.minenorth.vehicles.shop.ShopMulti;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
@@ -57,26 +57,14 @@ public final class VehicleCommands {
                 .then(Commands.literal("reload").executes(c -> reload(c.getSource())))
                 .then(Commands.literal("check").executes(c -> check(c.getSource()))));
 
-        // --- Zone de pose (le staff se tient au centre) ---
-        d.register(Commands.literal("vehiclezone").requires(VehicleCommands::admin)
-                .then(Commands.literal("set").executes(c -> {
-                    ServerPlayer p = c.getSource().getPlayerOrException();
-                    GarageData g = GarageData.get(p.getServer());
-                    g.shopDim = p.level().dimension().location().toString();
-                    g.shopPos = p.blockPosition().below();
-                    g.setDirty();
-                    Msg.send(p, "&aZone de pose des véhicules définie (3x3) à ta position actuelle.");
-                    return 1;
-                })));
-
         // --- Menus PNJ (exécutés par la console / un PNJ) ---
         d.register(Commands.literal("vendeurvehicule").requires(VehicleCommands::admin)
                 .executes(c -> {
-                    Shop.openCategories(c.getSource().getPlayerOrException());
+                    ShopMulti.open(c.getSource().getPlayerOrException(), "default");
                     return 1;
                 })
                 .then(Commands.argument("player", EntityArgument.player()).executes(c -> {
-                    Shop.openCategories(EntityArgument.getPlayer(c, "player"));
+                    ShopMulti.open(c.getSource().getPlayerOrException(), "default");
                     return 1;
                 })));
         d.register(Commands.literal("garagemenu").requires(VehicleCommands::admin)

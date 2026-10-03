@@ -29,8 +29,6 @@ public class GarageData extends SavedData {
 
     public final Map<String, Zone> zones = new LinkedHashMap<>();
     public final Map<UUID, List<Stored>> garages = new HashMap<>();
-    public String shopDim;
-    public BlockPos shopPos;
 
     public static GarageData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(GarageData::load, GarageData::new, "minenorth_garage");
@@ -74,10 +72,6 @@ public class GarageData extends SavedData {
         }
         tag.put("garages", gl);
 
-        if (shopPos != null && shopDim != null) {
-            tag.putString("shopDim", shopDim);
-            tag.putLong("shopPos", shopPos.asLong());
-        }
         return tag;
     }
 
@@ -110,10 +104,6 @@ public class GarageData extends SavedData {
                 list.add(s);
             }
             d.garages.put(g.getUUID("owner"), list);
-        }
-        if (tag.contains("shopPos")) {
-            d.shopDim = tag.getString("shopDim");
-            d.shopPos = BlockPos.of(tag.getLong("shopPos"));
         }
         return d;
     }
