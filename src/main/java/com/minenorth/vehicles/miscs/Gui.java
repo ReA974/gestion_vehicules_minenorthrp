@@ -1,6 +1,8 @@
 package com.minenorth.vehicles.miscs;
 
 import com.minenorth.vehicles.VehiclesMod;
+import com.minenorth.vehicles.config.VehicleConfig;
+import com.minenorth.vehicles.menu.MenuNet;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
@@ -89,6 +91,11 @@ public final class Gui extends ChestMenu {
     }
 
     public static void open(ServerPlayer p, String title, int rows, ItemStack[] items, SlotClick onClick) {
+        // Menus personnalisés (style jeu vidéo) pour les joueurs qui ont le mod ; coffre pour les autres
+        if (VehicleConfig.CUSTOM_GUI.get() && MenuNet.hasClientMod(p)) {
+            MenuNet.open(p, title, rows, items, onClick);
+            return;
+        }
         final int r = Math.max(1, Math.min(6, rows));
         SimpleContainer c = new SimpleContainer(r * 9);
         for (int i = 0; i < items.length && i < r * 9; i++) if (items[i] != null) c.setItem(i, items[i]);

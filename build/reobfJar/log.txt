@@ -136,6 +136,12 @@ Reading Input: C:\Users\diabl\Documents\Mes documents\minenorthrp\workspace mod 
 Adding input to inheritance map
 Processing entries
 Conflicting propagated mapping for com/minenorth/vehicles/ferme/FarmData/save(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag; from net/minecraft/world/level/saveddata/SavedData/save(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag;: save -> m_7176_
+Conflicting propagated mapping for com/minenorth/vehicles/client/MenuScreen/isPauseScreen()Z from net/minecraft/client/gui/screens/Screen/isPauseScreen()Z: isPauseScreen -> m_7043_
+Conflicting propagated mapping for com/minenorth/vehicles/client/MenuScreen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V from net/minecraft/client/gui/screens/Screen/render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V: render -> m_88315_
+Conflicting propagated mapping for com/minenorth/vehicles/client/MenuScreen/mouseScrolled(DDD)Z from net/minecraft/client/gui/components/events/ContainerEventHandler/mouseScrolled(DDD)Z: mouseScrolled -> m_6050_
+Conflicting propagated mapping for com/minenorth/vehicles/client/MenuScreen/init()V from net/minecraft/client/gui/screens/Screen/init()V: init -> m_7856_
+Conflicting propagated mapping for com/minenorth/vehicles/client/MenuScreen/mouseClicked(DDI)Z from net/minecraft/client/gui/components/events/ContainerEventHandler/mouseClicked(DDI)Z: mouseClicked -> m_6375_
+Conflicting propagated mapping for com/minenorth/vehicles/client/MenuScreen/removed()V from net/minecraft/client/gui/screens/Screen/removed()V: removed -> m_7861_
 Conflicting propagated mapping for com/minenorth/vehicles/garage/GarageData/save(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag; from net/minecraft/world/level/saveddata/SavedData/save(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag;: save -> m_7176_
 Conflicting propagated mapping for com/minenorth/vehicles/fourriere/ImpoundData/save(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag; from net/minecraft/world/level/saveddata/SavedData/save(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag;: save -> m_7176_
 Conflicting propagated mapping for net/minecraft/world/entity/LivingEntity/lambda$addAdditionalSaveData$3(Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/nbt/Tag;)V from net/minecraft/world/entity/player/Player/lambda$addAdditionalSaveData$3(Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/nbt/Tag;)V: lambda$addAdditionalSaveData$3 -> m_219754_
@@ -153,6 +159,9 @@ Writing Output: C:\Users\diabl\Documents\Mes documents\minenorthrp\workspace mod
   com/minenorth/
   com/minenorth/vehicles/
   com/minenorth/vehicles/VehiclesMod.class
+  com/minenorth/vehicles/client/
+  com/minenorth/vehicles/client/MenuClient.class
+  com/minenorth/vehicles/client/MenuScreen.class
   com/minenorth/vehicles/config/
   com/minenorth/vehicles/config/VehicleConfig$Denom.class
   com/minenorth/vehicles/config/VehicleConfig.class
@@ -188,6 +197,14 @@ Writing Output: C:\Users\diabl\Documents\Mes documents\minenorthrp\workspace mod
   com/minenorth/vehicles/handle/Payment.class
   com/minenorth/vehicles/handle/VehicleEvents$Check.class
   com/minenorth/vehicles/handle/VehicleEvents.class
+  com/minenorth/vehicles/menu/
+  com/minenorth/vehicles/menu/CloseMenuPacket.class
+  com/minenorth/vehicles/menu/MenuClickPacket.class
+  com/minenorth/vehicles/menu/MenuNet$Events.class
+  com/minenorth/vehicles/menu/MenuNet$Session.class
+  com/minenorth/vehicles/menu/MenuNet.class
+  com/minenorth/vehicles/menu/OpenMenuPacket$Slot.class
+  com/minenorth/vehicles/menu/OpenMenuPacket.class
   com/minenorth/vehicles/miscs/
   com/minenorth/vehicles/miscs/Gui$SlotClick.class
   com/minenorth/vehicles/miscs/Gui.class
