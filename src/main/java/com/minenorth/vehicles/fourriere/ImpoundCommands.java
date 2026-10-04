@@ -55,48 +55,6 @@ public final class ImpoundCommands {
                     Impound.openRecoverMenu(EntityArgument.getPlayer(c, "player"));
                     return 1;
                 })));
-
-        e.getDispatcher().register(Commands.literal("fourriereadmin").requires(ImpoundCommands::admin)
-                .then(Commands.literal("reset").then(Commands.argument("target", GameProfileArgument.gameProfile())
-                        .executes(ImpoundCommands::reset)))
-                .then(Commands.literal("remove").then(Commands.argument("target", GameProfileArgument.gameProfile())
-                        .executes(ImpoundCommands::remove))));
-    }
-
-    private static GameProfile target(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        return GameProfileArgument.getGameProfiles(c, "target").iterator().next();
-    }
-
-    private static int reset(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        GameProfile gp = target(c);
-        ImpoundData d = ImpoundData.get(c.getSource().getServer());
-        d.vehicles.remove(gp.getId());
-        d.setDirty();
-        c.getSource().sendSuccess(() -> Gui.comp(VehicleConfig.PREFIX.get() + " &aLa fourrière de " + gp.getName() + " a été vidée."), false);
-        return 1;
-    }
-
-    private static int remove(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        ServerPlayer p = c.getSource().getPlayerOrException();
-        GameProfile gp = target(c);
-        ImpoundData d = ImpoundData.get(p.getServer());
-        List<GarageData.Stored> list = d.of(gp.getId());
-        if (list.isEmpty()) {
-            Msg.send(p, "&cCe joueur n'a aucun véhicule en fourrière.");
-            return 0;
-        }
-        UUID id = gp.getId();
-        Gui.open(p, "&cRetirer un véhicule (admin)", Math.min(6, (list.size() + 8) / 9), Garage.listItems(list), slot -> {
-            if (slot < list.size()) Gui.later(p, () -> {
-                p.closeContainer();
-                List<GarageData.Stored> cur = d.of(id);
-                if (slot < cur.size()) {
-                    cur.remove(slot);
-                    d.setDirty();
-                    Msg.send(p, "&aVéhicule retiré de la fourrière.");
-                }
-            });
-        });
-        return 1;
+        // voir / retirer / vider la fourrière d'un joueur : panneau /mnadmin (mod minenorth_admin)
     }
 }

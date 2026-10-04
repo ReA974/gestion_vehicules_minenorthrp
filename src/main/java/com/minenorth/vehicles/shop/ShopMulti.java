@@ -5,6 +5,7 @@ import com.minenorth.vehicles.config.VehicleConfig;
 import com.minenorth.vehicles.handle.Money;
 import com.minenorth.vehicles.handle.EconomyBridge;
 import com.minenorth.vehicles.handle.MtsBridge;
+import com.minenorth.vehicles.handle.MtsFuel;
 import com.minenorth.vehicles.handle.Payment;
 import com.minenorth.vehicles.miscs.Gui;
 import com.minenorth.vehicles.miscs.Msg;
@@ -296,6 +297,25 @@ public final class ShopMulti {
             for (Check c : due) onVehiclePlaced(server, c.entity());
         }
         if (!WAITING.isEmpty()) tickWaiting(server, now);
+        if (!FUEL.isEmpty()) tickFuel();
+    }
+
+    /** Véhicules achetés en attente du plein -> essais restants. */
+    private static final Map<Entity, Integer> FUEL = new HashMap<>();
+
+    private static void tickFuel() {
+        Iterator<Map.Entry<Entity, Integer>> it = FUEL.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Entity, Integer> en = it.next();
+            Entity ent = en.getKey();
+            if (ent.isRemoved()) {
+                it.remove();
+                continue;
+            }
+            MtsFuel.Result r = MtsFuel.fill(ent, VehicleConfig.FUEL_FLUID.get());
+            if (r != MtsFuel.Result.RETRY || en.getValue() <= 1) it.remove();
+            else en.setValue(en.getValue() - 1);
+        }
     }
 
     private static void onVehiclePlaced(MinecraftServer server, Entity ent) {
@@ -317,6 +337,7 @@ public final class ShopMulti {
             if (Math.sqrt(dx * dx + dz * dz) <= radius) {
                 MtsBridge.setOwner(ent, en.getKey());
                 it.remove();
+                if (VehicleConfig.FILL_FUEL.get()) FUEL.put(ent, 100);   // plein fait au tick suivant (moteurs montés après l'apparition)
                 Msg.send(p, "&aVéhicule posé avec succès ! Bonne route.");
             } else {
                 ent.discard();

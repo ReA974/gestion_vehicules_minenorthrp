@@ -91,15 +91,10 @@ public final class VehicleCommands {
                                                 StringArgumentType.getString(c, "tag")))))));
 
         // --- Admin garage ---
+        // voir / retirer / vider le garage d'un joueur : panneau /mnadmin (mod minenorth_admin)
         d.register(Commands.literal("garageadmin").requires(VehicleCommands::admin)
-                .then(Commands.literal("see").then(Commands.argument("target", GameProfileArgument.gameProfile())
-                        .executes(VehicleCommands::adminSee)))
                 .then(Commands.literal("add").then(Commands.argument("target", GameProfileArgument.gameProfile())
-                        .executes(VehicleCommands::adminAdd)))
-                .then(Commands.literal("remove").then(Commands.argument("target", GameProfileArgument.gameProfile())
-                        .executes(VehicleCommands::adminRemove)))
-                .then(Commands.literal("reset").then(Commands.argument("target", GameProfileArgument.gameProfile())
-                        .executes(VehicleCommands::adminReset))));
+                        .executes(VehicleCommands::adminAdd))));
 
         // --- Diagnostic MTS ---
         d.register(Commands.literal("vehicledebug").requires(VehicleCommands::admin).executes(c -> debug(c.getSource())));
@@ -180,41 +175,7 @@ public final class VehicleCommands {
         return GameProfileArgument.getGameProfiles(c, "target").iterator().next();
     }
 
-    private static int adminSee(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        ServerPlayer p = c.getSource().getPlayerOrException();
-        GameProfile gp = target(c);
-        List<GarageData.Stored> list = GarageData.get(p.getServer()).of(gp.getId());
-        if (list.isEmpty()) {
-            Msg.send(p, "&e" + gp.getName() + " n'a aucun véhicule dans son garage.");
-            return 0;
-        }
-        Gui.open(p, "&aGarage de " + gp.getName(), Math.min(6, (list.size() + 8) / 9), Garage.listItems(list), slot -> {});
-        return 1;
-    }
 
-    private static int adminRemove(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        ServerPlayer p = c.getSource().getPlayerOrException();
-        GameProfile gp = target(c);
-        GarageData g = GarageData.get(p.getServer());
-        List<GarageData.Stored> list = g.of(gp.getId());
-        if (list.isEmpty()) {
-            Msg.send(p, "&cLe garage de " + gp.getName() + " est déjà vide.");
-            return 0;
-        }
-        UUID id = gp.getId();
-        Gui.open(p, "&cRetirer un véhicule", Math.min(6, (list.size() + 8) / 9), Garage.listItems(list), slot -> {
-            if (slot < list.size()) Gui.later(p, () -> {
-                p.closeContainer();
-                List<GarageData.Stored> cur = g.of(id);
-                if (slot < cur.size()) {
-                    cur.remove(slot);
-                    g.setDirty();
-                    Msg.send(p, "&aVéhicule retiré du garage. (" + cur.size() + " restant(s))");
-                }
-            });
-        });
-        return 1;
-    }
 
     /** Range dans le garage du joueur ciblé le véhicule dans lequel se trouve l'admin (ou le plus proche). */
     private static int adminAdd(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
@@ -224,14 +185,6 @@ public final class VehicleCommands {
         return 1;
     }
 
-    private static int adminReset(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        GameProfile gp = target(c);
-        GarageData g = GarageData.get(c.getSource().getServer());
-        g.garages.remove(gp.getId());
-        g.setDirty();
-        say(c.getSource(), "&aLe garage de " + gp.getName() + " a été remis à 0.");
-        return 1;
-    }
 
     // ------------------------------------------------------------------ diagnostic
 

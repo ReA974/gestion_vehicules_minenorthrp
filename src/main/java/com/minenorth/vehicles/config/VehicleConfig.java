@@ -19,7 +19,8 @@ public final class VehicleConfig {
     public static final ForgeConfigSpec.ConfigValue<String> ENTER_DEFAULT, LEAVE_MSG;
     public static final ForgeConfigSpec.IntValue COMMAND_LEVEL, GARAGE_MAX, CHECK_INTERVAL, SEARCH_RADIUS, PLACE_TIMEOUT;
     public static final ForgeConfigSpec.DoubleValue DEFAULT_ZONE_RADIUS, SHOP_PLACE_RADIUS, PROMPT_MAX_MOVE;
-    public static final ForgeConfigSpec.BooleanValue AUTO_PROMPT, GIVE_KEY, THEMED_GUI, CUSTOM_GUI;
+    public static final ForgeConfigSpec.BooleanValue AUTO_PROMPT, GIVE_KEY, THEMED_GUI, CUSTOM_GUI, FILL_FUEL;
+    public static final ForgeConfigSpec.ConfigValue<String> FUEL_FLUID;
 
     public record Denom(Item item, int value) {}
 
@@ -46,6 +47,10 @@ public final class VehicleConfig {
         b.pop();
 
         b.comment("Vendeur").push("shop");
+        FILL_FUEL = b.comment("Faire le plein des véhicules achetés quand ils sont posés (MTS : réservoir vide par défaut)")
+                .define("fillFuel", true);
+        FUEL_FLUID = b.comment("Carburant imposé (nom du fluide MTS, ex. \"diesel\"). Vide = le meilleur accepté par le moteur")
+                .define("fuelFluid", "");
         CURRENCY = b.comment("Billets et pièces acceptés en espèces : \"id=valeur\" (valeur en euros entiers).")
                 .defineList("currency", Arrays.asList(
                         "minenorth_eurobank:bill_500e=500",
