@@ -55,6 +55,8 @@ public final class ShopProfiles {
     }
 
     private static synchronized void ensureLoaded() {
+        // Config côté serveur uniquement : le client ne crée ni ne lit aucun fichier.
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist != net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER) return;
         Path f = file();
         try {
             if (!Files.exists(f)) {

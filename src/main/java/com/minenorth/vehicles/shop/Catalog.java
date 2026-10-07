@@ -53,6 +53,8 @@ public final class Catalog {
 
     /** @return nombre de véhicules chargés, ou -1 en cas d'erreur */
     public static int load() {
+        // Config côté serveur uniquement : le client ne crée ni ne lit aucun fichier.
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist != net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER) return 0;
         VEHICLES.clear();
         CATEGORIES.clear();
         CATEGORY_ICON.clear();

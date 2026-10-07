@@ -148,6 +148,8 @@ public final class FarmConfig {
 
     /** @return nombre de profils de véhicules chargés, -1 en cas d'erreur */
     public static int load() {
+        // Config côté serveur uniquement : le client ne crée ni ne lit aucun fichier.
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist != net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER) return 0;
         CROPS.clear();
         PROFILES.clear();
         Path f = file();
