@@ -21,6 +21,8 @@ public final class VehicleConfig {
     public static final ForgeConfigSpec.DoubleValue DEFAULT_ZONE_RADIUS, SHOP_PLACE_RADIUS, PROMPT_MAX_MOVE;
     public static final ForgeConfigSpec.BooleanValue AUTO_PROMPT, GIVE_KEY, THEMED_GUI, CUSTOM_GUI, FILL_FUEL;
     public static final ForgeConfigSpec.ConfigValue<String> FUEL_FLUID;
+    public static final ForgeConfigSpec.ConfigValue<String> POLICE_TAG;
+    public static final ForgeConfigSpec.BooleanValue REGISTRY_JSON;
 
     public record Denom(Item item, int value) {}
 
@@ -83,6 +85,13 @@ public final class VehicleConfig {
                         "garage.police=&9&lVous êtes dans la zone garage police.",
                         "garage.pompier=&e&lVous êtes dans la zone garage pompier.",
                         "garage.vip=&e&lVous êtes dans la zone garage VIP."), o -> o instanceof String);
+        b.pop();
+
+        b.comment("Fichier des immatriculations (rempli à chaque achat, consultable par la police)").push("immatriculation");
+        POLICE_TAG = b.comment("OBSOLÈTE : /immat est maintenant réservé aux effectifs du mod Police (et aux OP). Valeur ignorée.")
+                .define("policeTag", "police.check");
+        REGISTRY_JSON = b.comment("Exporter aussi le fichier en clair dans <monde>/minenorth_immatriculations.json")
+                .define("exportJson", true);
         b.pop();
 
         SPEC = b.build();

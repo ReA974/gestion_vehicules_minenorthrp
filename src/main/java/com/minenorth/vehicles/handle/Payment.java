@@ -1,9 +1,9 @@
 package com.minenorth.vehicles.handle;
 
 import com.minenorth.vehicles.config.VehicleConfig;
-import com.minenorth_eurobank.api.PayResult;
+import fr.minenorth.api.MineNorth;
+import fr.minenorth.api.PayResult;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
@@ -46,36 +46,30 @@ public final class Payment {
         return null;
     }
 
-    /** Débite le joueur selon le mode choisi. Si ok == false, rien n'a été retiré. */
-    public static Result pay(ServerPlayer p, int price, Method method, List<VehicleConfig.Denom> den) {
+    /**
+     * Débite le joueur selon le mode choisi. Si ok == false, rien n'a été retiré.
+     * Carte comme espèces, la somme part au trésor public sous cette source (ex. "garage:vente").
+     */
+    public static Result pay(ServerPlayer p, int price, Method method, List<VehicleConfig.Denom> den, String source) {
         if (price <= 0) return new Result(true, "");
         if (method == Method.CARD) {
-            PayResult r = EconomyBridge.charge(p, price);
+            PayResult r = EconomyBridge.charge(p, price, source);
             return new Result(r == PayResult.OK, r.message());
         }
         if (Money.count(p, den) < price) return new Result(false, "Pas assez d'espèces.");
         Money.take(p, price, den);
+        MineNorth.treasury().collect(p.server, price * EconomyBridge.CENTS_PER_UNIT, source);
         return new Result(true, "");
     }
 
-    /** Annule un paiement. Espèces : rendues en coupures, grosses d'abord. */
-    public static void refund(ServerPlayer p, int price, Method method, List<VehicleConfig.Denom> den) {
+    /** Annule un paiement (et le reprend au trésor). Espèces : rendues en coupures, grosses d'abord. */
+    public static void refund(ServerPlayer p, int price, Method method, List<VehicleConfig.Denom> den, String source) {
         if (price <= 0) return;
         if (method == Method.CARD) {
-            EconomyBridge.refund(p, price);
+            EconomyBridge.refund(p, price, source);
             return;
         }
-        int remaining = price;
-        for (VehicleConfig.Denom d : den) {            // décroissant
-            int k = remaining / d.value();
-            while (k > 0) {
-                int n = Math.min(k, 64);
-                ItemStack stack = new ItemStack(d.item(), n);
-                p.getInventory().add(stack);
-                if (!stack.isEmpty()) p.drop(stack, false);
-                k -= n;
-                remaining -= n * d.value();
-            }
-        }
+        Money.give(p, price, den);
+        MineNorth.treasury().collect(p.server, -price * EconomyBridge.CENTS_PER_UNIT, source);
     }
 }

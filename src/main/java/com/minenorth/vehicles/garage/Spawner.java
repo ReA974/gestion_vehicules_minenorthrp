@@ -66,7 +66,7 @@ public final class Spawner {
         Vec3 c = e.getBoundingBox().getCenter();
         double dx = t.x() - c.x, dz = t.z() - c.z;
         double dist = Math.sqrt(dx * dx + dz * dz);
-        VehiclesMod.LOGGER.info("[Vehicules] spawn : origine ({}, {}), centre de la boîte ({}, {}), écart à la cible {} blocs",
+        VehiclesMod.LOGGER.debug("[Vehicules] spawn : origine ({}, {}), centre de la boîte ({}, {}), écart à la cible {} blocs",
                 String.format("%.1f", e.getX()), String.format("%.1f", e.getZ()),
                 String.format("%.1f", c.x), String.format("%.1f", c.z), String.format("%.1f", dist));
         if (dist < 0.75 || dist > 12) return;

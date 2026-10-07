@@ -10,7 +10,7 @@ import com.minenorth.vehicles.handle.MtsBridge;
 import com.minenorth.vehicles.handle.Payment;
 import com.minenorth.vehicles.miscs.Gui;
 import com.minenorth.vehicles.miscs.Msg;
-import com.minenorth_eurobank.api.PayResult;
+import fr.minenorth.api.PayResult;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -183,7 +183,7 @@ public final class Impound {
             Msg.send(p, "&cImpossible de recréer ce véhicule (entité MTS introuvable ?). Il reste en fourrière, tu n'as pas été débité.");
             return;
         }
-        Payment.Result paid = Payment.pay(p, price, method, den);
+        Payment.Result paid = Payment.pay(p, price, method, den, "garage:fourriere");
         if (!paid.ok()) {
             e.discard();
             Msg.send(p, "&c" + paid.message());

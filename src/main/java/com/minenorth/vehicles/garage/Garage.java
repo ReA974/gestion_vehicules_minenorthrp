@@ -65,12 +65,13 @@ public final class Garage {
         ItemHandlerHelper.giveItemToPlayer(p, st);
     }
 
-    private static void removeOneKey(ServerPlayer p) {
+    /** Retire la clé de CE véhicule (même nom que celle donnée à l'achat / à la sortie). Les codes couleur § du nom sont ignorés. */
+    private static void removeOneKey(ServerPlayer p, String label) {
         Item k = VehicleConfig.item(VehicleConfig.KEY_ITEM.get());
         if (k == Items.AIR) return;
-        String prefix = VehicleConfig.KEY_NAME_PREFIX.get();
+        String expected = VehicleConfig.KEY_NAME_PREFIX.get() + " " + label;
         for (ItemStack s : p.getInventory().items) {
-            if (!s.isEmpty() && s.getItem() == k && s.getHoverName().getString().startsWith(prefix)) {
+            if (!s.isEmpty() && s.getItem() == k && expected.equals(net.minecraft.ChatFormatting.stripFormatting(s.getHoverName().getString()))) {
                 s.shrink(1);
                 return;
             }
@@ -103,7 +104,7 @@ public final class Garage {
         vehicle.discard();
         list.add(s);
         data.setDirty();
-        if (target.equals(actor.getUUID())) removeOneKey(actor);
+        if (target.equals(actor.getUUID())) removeOneKey(actor, s.label);
         Msg.send(actor, "&aVéhicule rangé dans le garage, intact ! (" + list.size() + "/" + max + ")");
         return true;
     }

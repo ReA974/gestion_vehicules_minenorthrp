@@ -23,6 +23,14 @@ public final class ShopProfiles {
         public String id, title = "&9&lVendeur";
         public final List<String> categories = new ArrayList<>();
         public double placeRadius = -1;
+        /** Donne 2 plaques (mts:gvp.eu_plate) et inscrit la vente au fichier des immatriculations. null = ancien comportement (deviné d'après le titre). */
+        public Boolean plates;
+
+        public boolean givesPlates() {
+            if (plates != null) return plates;
+            String t = title.toLowerCase(Locale.ROOT);
+            return t.contains("voiture") || t.contains("camion") || t.contains("moto");
+        }
     }
 
     private static final Map<String, Profile> PROFILES = new LinkedHashMap<>();
@@ -31,8 +39,8 @@ public final class ShopProfiles {
     private static final String SAMPLE = """
             {
               "shops": {
-                "default":  { "title": "&9&lVendeur - Catégories", "categories": [] },
-                "camions":  { "title": "&6&lCamions et Remorques", "categories": ["Camion", "Remorque"] },
+                "default":  { "title": "&9&lVendeur - Catégories", "categories": [], "plates": true },
+                "camions":  { "title": "&6&lCamions et Remorques", "categories": ["Camion", "Remorque"], "plates": true },
                 "ferme":    { "title": "&a&lVéhicules de ferme", "categories": ["Ferme"] },
                 "bateaux":  { "title": "&b&lBateaux", "categories": ["Bateau"], "placeRadius": 5.0 },
                 "aviation": { "title": "&d&lAvions et Hélicoptères", "categories": ["Avion", "Hélicoptère"], "placeRadius": 6.0 }
@@ -69,6 +77,7 @@ public final class ShopProfiles {
                 if (o.has("title")) p.title = o.get("title").getAsString();
                 if (o.has("categories")) for (JsonElement c : o.getAsJsonArray("categories")) p.categories.add(c.getAsString());
                 if (o.has("placeRadius")) p.placeRadius = o.get("placeRadius").getAsDouble();
+                if (o.has("plates")) p.plates = o.get("plates").getAsBoolean();
                 PROFILES.put(p.id, p);
             }
         } catch (Exception ex) {

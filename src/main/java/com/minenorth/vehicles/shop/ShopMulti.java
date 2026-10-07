@@ -9,7 +9,9 @@ import com.minenorth.vehicles.handle.MtsFuel;
 import com.minenorth.vehicles.handle.Payment;
 import com.minenorth.vehicles.miscs.Gui;
 import com.minenorth.vehicles.miscs.Msg;
-import com.minenorth_eurobank.api.PayResult;
+import com.minenorth.vehicles.registry.IdentityBridge;
+import com.minenorth.vehicles.registry.PlateRegistry;
+import fr.minenorth.api.PayResult;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -207,17 +209,19 @@ public final class ShopMulti {
             Msg.send(p, "&c" + err);
             return;
         }
-        Payment.Result paid = Payment.pay(p, v.price, method, den);
+        Payment.Result paid = Payment.pay(p, v.price, method, den, "garage:vente");
         if (!paid.ok()) {
             Msg.send(p, "&c" + paid.message());
             return;
         }
         ItemHandlerHelper.giveItemToPlayer(p, new ItemStack(it));
 
-        String plate = generatePlate();
+        String plate = generatePlate(server);
 
         Item plateItem = registryItem("mts:gvp.eu_plate");
-        if (plateItem != Items.AIR && (sp.title.contains("voitures") || sp.title.contains("Camions") || sp.title.contains("Motos"))) {
+        if (plateItem != Items.AIR && sp.givesPlates()) {
+            register(p, sp, v, method, plate);
+
             ItemStack plateStack = new ItemStack(plateItem, 2); // Quantité : 2
             CompoundTag plateNbt = plateStack.getOrCreateTag();
 
@@ -250,6 +254,40 @@ public final class ShopMulti {
     private static double radiusOf(String shopId) {
         ShopProfiles.Profile sp = ShopProfiles.get(shopId);
         return sp != null && sp.placeRadius > 0 ? sp.placeRadius : VehicleConfig.SHOP_PLACE_RADIUS.get();
+    }
+
+    /** Inscrit la vente au fichier des immatriculations (consultable par la police) avec l'identité RP de l'acheteur. */
+    private static void register(ServerPlayer p, ShopProfiles.Profile sp, Catalog.Vehicle v, Payment.Method method, String plate) {
+        PlateRegistry.Entry e = new PlateRegistry.Entry();
+        e.plate = plate;
+        e.model = v.model;
+        e.color = v.color.equals("Défaut") ? "" : v.color;
+        e.itemId = v.item;
+        e.shopId = sp.id;
+        e.method = method == Payment.Method.CARD ? "carte" : "espèces";
+        e.price = v.price;
+        e.owner = p.getUUID();
+        e.ownerName = p.getGameProfile().getName();
+        String[] id = IdentityBridge.identity(p.getServer(), p.getUUID());
+        if (id != null) {
+            e.firstName = id[0];
+            e.lastName = id[1];
+            e.birthDate = id[2];
+            e.birthPlace = id[3];
+            e.nationality = id[4];
+            e.cardNumber = id[5];
+        }
+        e.time = System.currentTimeMillis();
+        PlateRegistry.get(p.getServer()).add(p.getServer(), e);
+        Msg.send(p, "&7Immatriculation &e" + plate + " &7enregistrée au nom de &f" + e.displayName() + "&7.");
+    }
+
+    /** Plaque aléatoire qui n'existe pas encore dans le fichier des immatriculations. */
+    private static String generatePlate(MinecraftServer server) {
+        PlateRegistry reg = PlateRegistry.get(server);
+        String plate = generatePlate();
+        for (int i = 0; i < 50 && reg.taken(plate); i++) plate = generatePlate();
+        return plate;
     }
 
     private static String generatePlate() {

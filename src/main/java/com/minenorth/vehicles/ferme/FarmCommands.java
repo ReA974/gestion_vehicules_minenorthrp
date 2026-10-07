@@ -36,8 +36,8 @@ public final class FarmCommands {
         e.getDispatcher().register(Commands.literal("farm").requires(FarmCommands::admin)
                 .then(Commands.literal("reload").executes(c -> {
                     int n = FarmConfig.load();
-                    c.getSource().sendSuccess(() -> Gui.comp(VehicleConfig.PREFIX.get()
-                            + (n < 0 ? " &cErreur dans farm.json (voir la console)." : " &aFerme rechargée : " + n + " profil(s).")), false);
+                    c.getSource().sendSystemMessage(Gui.comp(VehicleConfig.PREFIX.get()
+                            + (n < 0 ? " &cErreur dans farm.json (voir la console)." : " &aFerme rechargée : " + n + " profil(s).")));
                     return Math.max(n, 0);
                 }))
                 .then(Commands.literal("info").executes(c -> info(c.getSource().getPlayerOrException()))));

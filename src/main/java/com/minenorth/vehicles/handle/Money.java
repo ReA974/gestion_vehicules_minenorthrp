@@ -63,5 +63,28 @@ public final class Money {
                 remaining -= d.value();
             }
         }
+        // Un billet trop gros a été pris : on rend la monnaie.
+        if (remaining < 0) give(p, -remaining, den);
+        inv.setChanged();
+    }
+
+    /** Donne un montant en billets/pièces de la config (du plus gros au plus petit). */
+    public static void give(ServerPlayer p, int amount, List<VehicleConfig.Denom> den) {
+        int remaining = amount;
+        for (VehicleConfig.Denom d : den) {            // décroissant
+            int k = remaining / d.value();
+            while (k > 0) {
+                int n = Math.min(k, d.item().getMaxStackSize());
+                ItemStack stack = new ItemStack(d.item(), n);
+                p.getInventory().add(stack);
+                if (!stack.isEmpty()) p.drop(stack, false);
+                k -= n;
+                remaining -= n * d.value();
+            }
+        }
+        if (remaining > 0) {
+            com.minenorth.vehicles.VehiclesMod.LOGGER.warn("[Vehicules] {}€ de monnaie non rendus à {} : aucune coupure assez petite dans la config 'currency'.",
+                    remaining, p.getGameProfile().getName());
+        }
     }
 }
