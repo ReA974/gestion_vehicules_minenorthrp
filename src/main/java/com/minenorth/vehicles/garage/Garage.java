@@ -307,13 +307,22 @@ public final class Garage {
         }
         VehicleType filter = FILTER.get(p.getUUID());
         // index réels des véhicules affichés (filtre Terrestre / Aérien / Maritime)
+        GarageData.Zone zoneHere = zoneAt(p);
+        List<GarageData.Stored> here = new ArrayList<>();
         List<Integer> shown = new ArrayList<>();
         List<GarageData.Stored> view = new ArrayList<>();
         for (int i = 0; i < all.size(); i++) {
-            if (filter == null || typeOf(all.get(i)) == filter) {
+            VehicleType ty = typeOf(all.get(i));
+            if (zoneHere != null && zoneAt(p, ty) == null) continue; // la zone masque les types qu'elle n'accepte pas
+            here.add(all.get(i));
+            if (filter == null || ty == filter) {
                 shown.add(i);
                 view.add(all.get(i));
             }
+        }
+        if (here.isEmpty()) {
+            Msg.send(p, "&cAucun de tes véhicules ne peut sortir de ce garage (" + zoneHere.typesLabel() + " uniquement).");
+            return;
         }
         // Les 4 derniers emplacements : assurance, vente, mode de sortie, filtre
         int rows = Math.min(6, Math.max(1, (shown.size() + 12) / 9));
@@ -325,7 +334,7 @@ public final class Garage {
         if (shown.size() <= filterSlot) {
             items[filterSlot] = Gui.item(filter == null ? Items.COMPASS : filter == VehicleType.AIR ? Items.FEATHER : filter == VehicleType.MER ? Items.WATER_BUCKET : Items.MINECART,
                     "&e&lFiltre : " + (filter == null ? "&fTous" : filter.tag()),
-                    "&7Terrestre : &f" + count(all, VehicleType.TERRE) + " &7| Aérien : &f" + count(all, VehicleType.AIR) + " &7| Maritime : &f" + count(all, VehicleType.MER),
+                    "&7Terrestre : &f" + count(here, VehicleType.TERRE) + " &7| Aérien : &f" + count(here, VehicleType.AIR) + " &7| Maritime : &f" + count(here, VehicleType.MER),
                     "&8Clique pour changer de type");
         }
         if (extras) {
