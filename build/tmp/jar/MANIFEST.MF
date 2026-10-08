@@ -1,9 +1,0 @@
-Manifest-Version: 1.0
-Specification-Title: minenorth_rp_vehicles
-Specification-Vendor: ReA974
-Specification-Version: 1
-Implementation-Title: Garage_MineNorthRP
-Implementation-Version: 1.0.0
-Implementation-Vendor: ReA974
-Implementation-Timestamp: 2026-10-04T12:25:46+0200
-
