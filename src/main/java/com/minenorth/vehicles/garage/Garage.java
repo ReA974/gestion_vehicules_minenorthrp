@@ -71,13 +71,27 @@ public final class Garage {
         ItemHandlerHelper.giveItemToPlayer(p, st);
     }
 
-    /** Retire la clé de CE véhicule (même nom que celle donnée à l'achat / à la sortie). Les codes couleur § du nom sont ignorés. */
+    /**
+     * Retire la clé de CE véhicule : d'abord celle qui porte son nom (« Clé - <véhicule> », codes couleur ignorés) ;
+     * à défaut, une clé MTS sans nom (une clé liée avant le correctif de nommage perd son nom).
+     */
     public static void removeOneKey(ServerPlayer p, String label) {
         Item k = VehicleConfig.item(VehicleConfig.KEY_ITEM.get());
         if (k == Items.AIR) return;
-        String expected = VehicleConfig.KEY_NAME_PREFIX.get() + " " + label;
-        for (ItemStack s : p.getInventory().items) {
+        String prefix = VehicleConfig.KEY_NAME_PREFIX.get();
+        String expected = prefix + " " + label;
+        List<ItemStack> all = new ArrayList<>(p.getInventory().items);
+        all.addAll(p.getInventory().offhand);
+        for (ItemStack s : all) {
             if (!s.isEmpty() && s.getItem() == k && expected.equals(net.minecraft.ChatFormatting.stripFormatting(s.getHoverName().getString()))) {
+                s.shrink(1);
+                return;
+            }
+        }
+        for (ItemStack s : all) {
+            if (s.isEmpty() || s.getItem() != k) continue;
+            String name = net.minecraft.ChatFormatting.stripFormatting(s.getHoverName().getString());
+            if (name == null || !name.startsWith(prefix)) {
                 s.shrink(1);
                 return;
             }
@@ -246,12 +260,13 @@ public final class Garage {
             Msg.send(p, "&cTu dois être près d'un garage pour utiliser cette commande.");
             return;
         }
-        // Ligne 1 : rentrer / voir le garage. Ligne 2 : assurance / vente.
+        // Ligne 1 : rentrer / voir le garage. Ligne 2 : assurance / filtre / vente.
         ItemStack[] items = new ItemStack[18];
         items[2] = Gui.item(Items.PAPER, "&e&lRentrer mon véhicule", "&7Monte dans ton véhicule ou reste à côté.");
         items[6] = Gui.item(Items.PAPER, "&e&lVoir mon garage");
         items[11] = Gui.item(Items.SHIELD, "&b&lAssurer mes véhicules", "&7Paie une assurance : si le véhicule est détruit,",
                 "&7il revient seul dans ton garage (une seule fois).");
+        items[13] = filterItem(p);
         items[15] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
         Gui.open(p, "&aGarage", 2, items, slot -> {
             if (slot == 2) Gui.later(p, () -> {
@@ -260,6 +275,10 @@ public final class Garage {
             });
             else if (slot == 6) Gui.later(p, () -> openList(p));
             else if (slot == 11) Gui.later(p, () -> com.minenorth.vehicles.assurance.Insurance.openMenu(p));
+            else if (slot == 13) Gui.later(p, () -> {
+                cycleFilter(p);
+                openMenu(p);
+            });
             else if (slot == 15) Gui.later(p, () -> VehicleSale.openSell(p));
         });
     }
@@ -298,6 +317,23 @@ public final class Garage {
         return l.stream().filter(s -> typeOf(s) == t).count();
     }
 
+    /** Filtre du garage (Tous -> Terrestre -> Aérien -> Maritime -> Tous) : choisi dans le menu principal, appliqué à la liste. */
+    private static void cycleFilter(ServerPlayer p) {
+        VehicleType filter = FILTER.get(p.getUUID());
+        VehicleType[] v = VehicleType.values();
+        VehicleType next = filter == null ? v[0] : filter.ordinal() + 1 < v.length ? v[filter.ordinal() + 1] : null;
+        if (next == null) FILTER.remove(p.getUUID()); else FILTER.put(p.getUUID(), next);
+    }
+
+    private static ItemStack filterItem(ServerPlayer p) {
+        VehicleType filter = FILTER.get(p.getUUID());
+        List<GarageData.Stored> all = GarageData.get(p.getServer()).of(p.getUUID());
+        return Gui.item(filter == null ? Items.COMPASS : filter == VehicleType.AIR ? Items.FEATHER : filter == VehicleType.MER ? Items.WATER_BUCKET : Items.MINECART,
+                "&e&lFiltre : " + (filter == null ? "&fTous" : filter.tag()),
+                "&7Terrestre : &f" + count(all, VehicleType.TERRE) + " &7| Aérien : &f" + count(all, VehicleType.AIR) + " &7| Maritime : &f" + count(all, VehicleType.MER),
+                "&8Clique pour changer de type", "&8S'applique à « Voir mon garage »");
+    }
+
     public static void openList(ServerPlayer p) {
         GarageData data = GarageData.get(p.getServer());
         List<GarageData.Stored> all = data.of(p.getUUID());
@@ -324,41 +360,23 @@ public final class Garage {
             Msg.send(p, "&cAucun de tes véhicules ne peut sortir de ce garage (" + zoneHere.typesLabel() + " uniquement).");
             return;
         }
-        // Les 4 derniers emplacements : assurance, vente, mode de sortie, filtre
-        int rows = Math.min(6, Math.max(1, (shown.size() + 12) / 9));
+        // Dernier emplacement : mode de sortie. Assurance, vente et filtre sont dans le menu principal.
+        int rows = Math.min(6, Math.max(1, (shown.size() + 9) / 9));
         ItemStack[] items = new ItemStack[rows * 9];
         ItemStack[] vehicles = listItems(view, p);
         System.arraycopy(vehicles, 0, items, 0, Math.min(vehicles.length, items.length));
-        int filterSlot = items.length - 1, modeSlot = items.length - 2, sellSlot = items.length - 3, insureSlot = items.length - 4;
-        boolean extras = shown.size() <= insureSlot;
-        if (shown.size() <= filterSlot) {
-            items[filterSlot] = Gui.item(filter == null ? Items.COMPASS : filter == VehicleType.AIR ? Items.FEATHER : filter == VehicleType.MER ? Items.WATER_BUCKET : Items.MINECART,
-                    "&e&lFiltre : " + (filter == null ? "&fTous" : filter.tag()),
-                    "&7Terrestre : &f" + count(here, VehicleType.TERRE) + " &7| Aérien : &f" + count(here, VehicleType.AIR) + " &7| Maritime : &f" + count(here, VehicleType.MER),
-                    "&8Clique pour changer de type");
-        }
-        if (extras) {
-            items[modeSlot] = modeItem(p);
-            items[sellSlot] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
-            items[insureSlot] = Gui.item(Items.SHIELD, "&b&lAssurer un véhicule", "&7S'il est détruit, il revient dans ton garage.");
-        }
+        int modeSlot = items.length - 1;
+        boolean extras = shown.size() <= modeSlot;
+        if (extras) items[modeSlot] = modeItem(p);
         Gui.open(p, "&aMon Garage" + (filter == null ? "" : " - " + filter.label), rows, items, slot -> {
             if (slot < shown.size()) Gui.later(p, () -> {
                 p.closeContainer();
                 retrieve(p, shown.get(slot));
             });
-            else if (slot == filterSlot) Gui.later(p, () -> {
-                VehicleType[] v = VehicleType.values();
-                VehicleType next = filter == null ? v[0] : filter.ordinal() + 1 < v.length ? v[filter.ordinal() + 1] : null;
-                if (next == null) FILTER.remove(p.getUUID()); else FILTER.put(p.getUUID(), next);
-                openList(p);
-            });
             else if (extras && slot == modeSlot) Gui.later(p, () -> {
                 toggleMode(p);
                 openList(p);
             });
-            else if (extras && slot == sellSlot) Gui.later(p, () -> VehicleSale.openSell(p));
-            else if (extras && slot == insureSlot) Gui.later(p, () -> com.minenorth.vehicles.assurance.Insurance.openMenu(p));
         });
     }
 
