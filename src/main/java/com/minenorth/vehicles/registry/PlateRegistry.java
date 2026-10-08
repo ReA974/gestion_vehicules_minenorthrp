@@ -103,8 +103,15 @@ public class PlateRegistry extends SavedData {
 
     /** Change le propriétaire d'une plaque (revente). */
     public boolean transfer(MinecraftServer server, String plate, UUID owner, String ownerName) {
+        return transfer(server, plate, owner, ownerName, -1, null);
+    }
+
+    /** Revente entre joueurs : change le propriétaire et note le prix et le mode (price < 0 : inchangé). */
+    public boolean transfer(MinecraftServer server, String plate, UUID owner, String ownerName, int price, String method) {
         Entry e = byPlate(plate);
         if (e == null) return false;
+        if (price >= 0) e.price = price;
+        if (method != null) e.method = method;
         e.owner = owner;
         e.ownerName = ownerName == null ? "" : ownerName;
         String[] id = IdentityBridge.identity(server, owner);

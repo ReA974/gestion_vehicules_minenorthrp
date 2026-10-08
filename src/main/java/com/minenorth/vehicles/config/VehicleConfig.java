@@ -18,6 +18,8 @@ public final class VehicleConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CURRENCY, ZONE_MESSAGES;
     public static final ForgeConfigSpec.ConfigValue<String> ENTER_DEFAULT, LEAVE_MSG;
     public static final ForgeConfigSpec.IntValue COMMAND_LEVEL, GARAGE_MAX, CHECK_INTERVAL, SEARCH_RADIUS, PLACE_TIMEOUT;
+    public static final ForgeConfigSpec.IntValue HAND_TIMEOUT, SALE_EXPIRE, SALE_MAX_PRICE;
+    public static final ForgeConfigSpec.DoubleValue SALE_DISTANCE;
     public static final ForgeConfigSpec.DoubleValue DEFAULT_ZONE_RADIUS, SHOP_PLACE_RADIUS, PROMPT_MAX_MOVE;
     public static final ForgeConfigSpec.BooleanValue AUTO_PROMPT, GIVE_KEY, THEMED_GUI, CUSTOM_GUI, FILL_FUEL;
     public static final ForgeConfigSpec.ConfigValue<String> FUEL_FLUID;
@@ -80,11 +82,20 @@ public final class VehicleConfig {
                 .defineInRange("promptMaxMove", 1.5, 0.0, 50.0);
         ENTER_DEFAULT = b.define("enterMessage", "&a&lTu entres dans une zone garage.");
         LEAVE_MSG = b.define("leaveMessage", "&c&lTu quittes la zone garage.");
+        HAND_TIMEOUT = b.comment("Sortie « en main » : secondes pour poser le véhicule dans la zone garage avant qu'il retourne au garage")
+                .defineInRange("handTimeoutSeconds", 120, 10, 3600);
         ZONE_MESSAGES = b.comment("Messages d'entrée selon le tag de la zone : \"tag=message\"")
                 .defineList("zoneMessages", Arrays.asList(
                         "garage.police=&9&lVous êtes dans la zone garage police.",
                         "garage.pompier=&e&lVous êtes dans la zone garage pompier.",
                         "garage.vip=&e&lVous êtes dans la zone garage VIP."), o -> o instanceof String);
+        b.pop();
+
+        b.comment("Vente d'un véhicule entre joueurs (/vente), payée par virement bancaire, plaque transférée à l'acheteur").push("vente");
+        SALE_EXPIRE = b.comment("Secondes pendant lesquelles l'acheteur peut accepter une offre").defineInRange("offerSeconds", 120, 10, 3600);
+        SALE_DISTANCE = b.comment("Distance max (blocs) entre vendeur et acheteur à la proposition (0 = pas de limite)")
+                .defineInRange("maxDistance", 15.0, 0.0, 10000.0);
+        SALE_MAX_PRICE = b.comment("Prix maximum d'une vente entre joueurs (€)").defineInRange("maxPrice", 1000000, 1, Integer.MAX_VALUE);
         b.pop();
 
         b.comment("Fichier des immatriculations (rempli à chaque achat, consultable par la police)").push("immatriculation");

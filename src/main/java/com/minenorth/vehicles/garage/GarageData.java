@@ -27,6 +27,20 @@ public class GarageData extends SavedData {
         public CompoundTag nbt = new CompoundTag();
     }
 
+    /** Véhicule sorti « en main » : l'item est dans l'inventaire, le véhicule attend d'être posé dans la zone. */
+    public static final class Pending {
+        public Stored vehicle = new Stored();
+        public String zone = "";
+        /** Heure (ms) limite pour poser le véhicule. */
+        public long expireMs;
+    }
+
+    /** Joueurs qui veulent récupérer leur véhicule en main (les autres : il apparaît directement). */
+    public final java.util.Set<UUID> handMode = new java.util.HashSet<>();
+    public final Map<UUID, Pending> pending = new HashMap<>();
+    /** Items de véhicule à reprendre à la prochaine connexion (sortie en main expirée pendant l'absence). */
+    public final Map<UUID, List<String>> strip = new HashMap<>();
+
     public final Map<String, Zone> zones = new LinkedHashMap<>();
     public final Map<UUID, List<Stored>> garages = new HashMap<>();
 
@@ -72,6 +86,36 @@ public class GarageData extends SavedData {
         }
         tag.put("garages", gl);
 
+        ListTag hm = new ListTag();
+        for (UUID id : handMode) {
+            CompoundTag t = new CompoundTag();
+            t.putUUID("id", id);
+            hm.add(t);
+        }
+        tag.put("handMode", hm);
+        ListTag pl = new ListTag();
+        for (Map.Entry<UUID, Pending> en : pending.entrySet()) {
+            CompoundTag t = new CompoundTag();
+            t.putUUID("id", en.getKey());
+            t.putString("zone", en.getValue().zone);
+            t.putLong("expire", en.getValue().expireMs);
+            t.putString("label", en.getValue().vehicle.label);
+            t.putString("item", en.getValue().vehicle.itemId);
+            t.put("nbt", en.getValue().vehicle.nbt);
+            pl.add(t);
+        }
+        tag.put("pending", pl);
+        ListTag sl = new ListTag();
+        for (Map.Entry<UUID, List<String>> en : strip.entrySet()) {
+            CompoundTag t = new CompoundTag();
+            t.putUUID("id", en.getKey());
+            ListTag items = new ListTag();
+            for (String it : en.getValue()) items.add(net.minecraft.nbt.StringTag.valueOf(it));
+            t.put("items", items);
+            sl.add(t);
+        }
+        tag.put("strip", sl);
+
         return tag;
     }
 
@@ -104,6 +148,27 @@ public class GarageData extends SavedData {
                 list.add(s);
             }
             d.garages.put(g.getUUID("owner"), list);
+        }
+        ListTag hm = tag.getList("handMode", Tag.TAG_COMPOUND);
+        for (int i = 0; i < hm.size(); i++) d.handMode.add(hm.getCompound(i).getUUID("id"));
+        ListTag pl = tag.getList("pending", Tag.TAG_COMPOUND);
+        for (int i = 0; i < pl.size(); i++) {
+            CompoundTag t = pl.getCompound(i);
+            Pending pe = new Pending();
+            pe.zone = t.getString("zone");
+            pe.expireMs = t.getLong("expire");
+            pe.vehicle.label = t.getString("label");
+            pe.vehicle.itemId = t.getString("item");
+            pe.vehicle.nbt = t.getCompound("nbt");
+            d.pending.put(t.getUUID("id"), pe);
+        }
+        ListTag sl = tag.getList("strip", Tag.TAG_COMPOUND);
+        for (int i = 0; i < sl.size(); i++) {
+            CompoundTag t = sl.getCompound(i);
+            List<String> items = new ArrayList<>();
+            ListTag il = t.getList("items", Tag.TAG_STRING);
+            for (int j = 0; j < il.size(); j++) items.add(il.getString(j));
+            d.strip.put(t.getUUID("id"), items);
         }
         return d;
     }

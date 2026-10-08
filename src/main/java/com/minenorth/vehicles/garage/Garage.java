@@ -56,7 +56,7 @@ public final class Garage {
         return sys.isEmpty() ? "Véhicule" : sys.replace('_', ' ');
     }
 
-    private static void giveKey(ServerPlayer p, String label) {
+    public static void giveKey(ServerPlayer p, String label) {
         if (!VehicleConfig.GIVE_KEY.get()) return;
         Item k = VehicleConfig.item(VehicleConfig.KEY_ITEM.get());
         if (k == Items.AIR) return;
@@ -66,7 +66,7 @@ public final class Garage {
     }
 
     /** Retire la clé de CE véhicule (même nom que celle donnée à l'achat / à la sortie). Les codes couleur § du nom sont ignorés. */
-    private static void removeOneKey(ServerPlayer p, String label) {
+    public static void removeOneKey(ServerPlayer p, String label) {
         Item k = VehicleConfig.item(VehicleConfig.KEY_ITEM.get());
         if (k == Items.AIR) return;
         String expected = VehicleConfig.KEY_NAME_PREFIX.get() + " " + label;
@@ -169,6 +169,12 @@ public final class Garage {
         if (index < 0 || index >= list.size()) return;
         GarageData.Stored s = list.get(index);
 
+        // Mode « en main » : l'item du véhicule est donné, à poser dans la zone (sinon retour au garage)
+        if (data.handMode.contains(p.getUUID())) {
+            int r = HandRetrieve.start(p, zone, list, index);
+            if (r != HandRetrieve.FALLBACK) return;
+        }
+
         ServerLevel level = (ServerLevel) p.level();
 
         double spawnX = zone.x;
@@ -185,6 +191,30 @@ public final class Garage {
         Msg.send(p, "&aVéhicule récupéré ! Il t'attend au centre de la zone.");
     }
 
+    // ------------------------------------------------------------------ mode de sortie
+
+    public static boolean handMode(ServerPlayer p) {
+        return GarageData.get(p.getServer()).handMode.contains(p.getUUID());
+    }
+
+    public static void toggleMode(ServerPlayer p) {
+        GarageData d = GarageData.get(p.getServer());
+        if (!d.handMode.remove(p.getUUID())) d.handMode.add(p.getUUID());
+        d.setDirty();
+        Msg.send(p, handMode(p)
+                ? "&aSortie du véhicule : &eEN MAIN&a. Tu devras le poser dans la zone garage, sinon il retourne au garage."
+                : "&aSortie du véhicule : &eDIRECTE&a. Il apparaît tout de suite dans la zone garage.");
+    }
+
+    public static ItemStack modeItem(ServerPlayer p) {
+        boolean hand = handMode(p);
+        return Gui.item(hand ? Items.CHEST : Items.MINECART, "&e&lSortie : " + (hand ? "en main" : "directe"),
+                hand ? "&7Tu reçois le véhicule en main et dois" : "&7Le véhicule apparaît tout de suite",
+                hand ? "&7le poser dans la zone garage," : "&7au centre de la zone garage.",
+                hand ? "&7sinon il retourne au garage." : "&8Clique pour passer en mode « en main »",
+                hand ? "&8Clique pour passer en mode « direct »" : "");
+    }
+
     // ------------------------------------------------------------------ menus
 
     /** Menu du PNJ garage (commande /garagemenu). */
@@ -198,14 +228,21 @@ public final class Garage {
             return;
         }
         ItemStack[] items = new ItemStack[9];
+        items[1] = modeItem(p);
         items[3] = Gui.item(Items.PAPER, "&e&lRentrer mon véhicule", "&7Monte dans ton véhicule ou reste à côté.");
         items[5] = Gui.item(Items.PAPER, "&e&lVoir mon garage");
+        items[7] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
         Gui.open(p, "&aGarage", 1, items, slot -> {
-            if (slot == 3) Gui.later(p, () -> {
+            if (slot == 1) Gui.later(p, () -> {
+                toggleMode(p);
+                openMenu(p);
+            });
+            else if (slot == 3) Gui.later(p, () -> {
                 p.closeContainer();
                 storeNearby(p);
             });
             else if (slot == 5) Gui.later(p, () -> openList(p));
+            else if (slot == 7) Gui.later(p, () -> VehicleSale.openSell(p));
         });
     }
 
@@ -241,12 +278,27 @@ public final class Garage {
             Msg.send(p, "&cTon garage est vide, aucun véhicule à récupérer.");
             return;
         }
-        ItemStack[] items = listItems(list);
-        Gui.open(p, "&aMon Garage", Math.min(6, (list.size() + 8) / 9), items, slot -> {
+        // Une rangée de plus s'il le faut : les deux derniers emplacements sont le mode de sortie et la vente
+        int rows = Math.min(6, (list.size() + 10) / 9);
+        ItemStack[] items = new ItemStack[rows * 9];
+        ItemStack[] vehicles = listItems(list);
+        System.arraycopy(vehicles, 0, items, 0, Math.min(vehicles.length, items.length));
+        int modeSlot = items.length - 1, sellSlot = items.length - 2;
+        boolean extras = list.size() <= sellSlot;
+        if (extras) {
+            items[modeSlot] = modeItem(p);
+            items[sellSlot] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
+        }
+        Gui.open(p, "&aMon Garage", rows, items, slot -> {
             if (slot < list.size()) Gui.later(p, () -> {
                 p.closeContainer();
                 retrieve(p, slot);
             });
+            else if (extras && slot == modeSlot) Gui.later(p, () -> {
+                toggleMode(p);
+                openList(p);
+            });
+            else if (extras && slot == sellSlot) Gui.later(p, () -> VehicleSale.openSell(p));
         });
     }
 
