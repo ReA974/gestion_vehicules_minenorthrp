@@ -82,6 +82,10 @@ public final class VehicleCommands {
                 .then(Commands.literal("list").executes(c -> listZones(c.getSource())))
                 .then(Commands.literal("remove").then(Commands.argument("name", StringArgumentType.word())
                         .executes(c -> removeZone(c.getSource(), StringArgumentType.getString(c, "name")))))
+                .then(Commands.literal("settype").then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("types", StringArgumentType.word())
+                                .executes(c -> setZoneTypes(c.getSource(), StringArgumentType.getString(c, "name"),
+                                        StringArgumentType.getString(c, "types"))))))
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(c -> setZone(c, VehicleConfig.DEFAULT_ZONE_RADIUS.get(), ""))
                         .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0.5))
@@ -143,6 +147,32 @@ public final class VehicleCommands {
         return 1;
     }
 
+    /** types : "tous" ou liste séparée par des virgules (terre, air, mer). Ex : /garagezone settype hangar air */
+    private static int setZoneTypes(CommandSourceStack s, String name, String types) {
+        GarageData g = GarageData.get(s.getServer());
+        GarageData.Zone z = g.zones.get(name);
+        if (z == null) {
+            say(s, "&cGarage inconnu : " + name);
+            return 0;
+        }
+        List<String> out = new ArrayList<>();
+        if (!types.equalsIgnoreCase("tous") && !types.equalsIgnoreCase("all")) {
+            for (String t : types.split(",")) {
+                com.minenorth.vehicles.garage.VehicleType vt = com.minenorth.vehicles.garage.VehicleType.parse(t);
+                if (vt == null) {
+                    say(s, "&cType inconnu : " + t + " (terre, air, mer ou tous).");
+                    return 0;
+                }
+                String n = vt.name().toLowerCase(java.util.Locale.ROOT);
+                if (!out.contains(n)) out.add(n);
+            }
+        }
+        z.types = String.join(",", out);
+        g.setDirty();
+        say(s, "&aGarage \"" + name + "\" : &f" + z.typesLabel() + "&a.");
+        return 1;
+    }
+
     private static int listZones(CommandSourceStack s) {
         GarageData g = GarageData.get(s.getServer());
         VehiclesMod.LOGGER.warn("[Vehicules] Garage trouvé : {}", g);
@@ -152,8 +182,8 @@ public final class VehicleCommands {
         }
         say(s, "&eGarages définis (" + g.zones.size() + ") :");
         for (GarageData.Zone z : g.zones.values()) {
-            say(s, String.format(java.util.Locale.ROOT, "&7- &f%s &8| %s | %.0f %.0f %.0f | rayon %.1f | %s",
-                    z.name, z.dim, z.x, z.y, z.z, z.radius, z.tag.isEmpty() ? "public" : z.tag));
+            say(s, String.format(java.util.Locale.ROOT, "&7- &f%s &8| %s | %.0f %.0f %.0f | rayon %.1f | %s | %s",
+                    z.name, z.dim, z.x, z.y, z.z, z.radius, z.tag.isEmpty() ? "public" : z.tag, z.typesLabel()));
         }
         return g.zones.size();
     }

@@ -179,7 +179,7 @@ public final class HandRetrieve {
             Vec3 pos = ent.position();
             double dx = pos.x - z.x, dz = pos.z - z.z;
             boolean inside = z.dim.equals(dim) && Math.sqrt(dx * dx + dz * dz) <= z.radius;
-            ent.discard();
+            MtsBridge.discard(ent);
             if (inside) {
                 Entity placed = Spawner.spawn(level, pe.vehicle.nbt, pos.x, pos.y, pos.z, en.getKey());
                 if (placed == null) {

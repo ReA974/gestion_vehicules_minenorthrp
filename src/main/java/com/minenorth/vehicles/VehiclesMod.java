@@ -18,6 +18,7 @@ public class VehiclesMod {
         if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER) {
             ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, VehicleConfig.SPEC, "minenorth-garage.toml");
             ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ImpoundConfig.SPEC, "minenorth-fourriere.toml");
+            ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, com.minenorth.vehicles.assurance.InsuranceConfig.SPEC, "minenorth-assurance.toml");
         }
     }
 }

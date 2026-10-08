@@ -45,6 +45,7 @@ public class ImpoundData extends SavedData {
                 CompoundTag v = new CompoundTag();
                 v.putString("label", s.label);
                 v.putString("item", s.itemId);
+                v.putString("plate", s.plate);
                 v.put("nbt", s.nbt);
                 vl.add(v);
             }
@@ -72,6 +73,7 @@ public class ImpoundData extends SavedData {
                 GarageData.Stored s = new GarageData.Stored();
                 s.label = v.getString("label");
                 s.itemId = v.getString("item");
+                s.plate = v.getString("plate");
                 s.nbt = v.getCompound("nbt");
                 list.add(s);
             }

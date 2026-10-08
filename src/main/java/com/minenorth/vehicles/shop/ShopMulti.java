@@ -378,7 +378,7 @@ public final class ShopMulti {
                 if (VehicleConfig.FILL_FUEL.get()) FUEL.put(ent, 100);   // plein fait au tick suivant (moteurs montés après l'apparition)
                 Msg.send(p, "&aVéhicule posé avec succès ! Bonne route.");
             } else {
-                ent.discard();
+                MtsBridge.discard(ent);
                 Item item = registryItem(w.itemId);
                 if (item != Items.AIR) ItemHandlerHelper.giveItemToPlayer(p, new ItemStack(item));
                 Msg.send(p, "&cTu dois poser ton véhicule DANS la zone marquée ! Reprends l'item dans ton inventaire et réessaie.");

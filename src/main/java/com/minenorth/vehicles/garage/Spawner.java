@@ -35,6 +35,7 @@ public final class Spawner {
         Entity e = MtsBridge.restore(level, nbt, x, y, z);
         if (e == null) return null;
         MtsBridge.setOwner(e, owner);
+        if (MtsBridge.isInsured(nbt)) MtsBridge.setOrigin(e, nbt);
         level.addFreshEntityWithPassengers(e);
         if (ImpoundConfig.CENTER_SPAWN.get()) {
             TASKS.add(new Task(e, x, z, level.getServer().getTickCount() + 4));
@@ -73,8 +74,12 @@ public final class Spawner {
 
         CompoundTag snap = MtsBridge.snapshot(e); // le propriétaire (ForgeData) est conservé
         double nx = e.getX() + dx, nz = e.getZ() + dz, y = e.getY();
-        e.discard();
+        MtsBridge.discard(e);
+        CompoundTag origin = MtsBridge.origin(e);
         Entity n = MtsBridge.restore(level, snap, nx, y, nz);
-        if (n != null) level.addFreshEntityWithPassengers(n);
+        if (n != null) {
+            if (origin != null) MtsBridge.setOrigin(n, origin);
+            level.addFreshEntityWithPassengers(n);
+        }
     }
 }

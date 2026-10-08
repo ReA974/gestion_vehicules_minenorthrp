@@ -30,10 +30,16 @@ public final class Garage {
 
     /** Zone garage accessible où se trouve le joueur (distance horizontale, comme le script d'origine). */
     public static GarageData.Zone zoneAt(ServerPlayer p) {
+        return zoneAt(p, null);
+    }
+
+    /** Zone accessible où se trouve le joueur ET qui accepte ce type de véhicule (type null = n'importe lequel). */
+    public static GarageData.Zone zoneAt(ServerPlayer p, VehicleType type) {
         GarageData d = GarageData.get(p.getServer());
         String dim = p.level().dimension().location().toString();
         for (GarageData.Zone z : d.zones.values()) {
             if (!z.dim.equals(dim)) continue;
+            if (type != null && !z.accepts(type)) continue;
             if (!z.tag.isEmpty() && !p.getTags().contains(z.tag) && !p.hasPermissions(2)) continue;
             double dx = p.getX() - z.x, dz = p.getZ() - z.z;
             if (Math.sqrt(dx * dx + dz * dz) <= z.radius) return z;
@@ -99,13 +105,22 @@ public final class Garage {
         s.nbt = snap;
         s.itemId = MtsBridge.itemId(snap);
         s.label = labelOf(s.itemId, snap);
+        if (!admin && refusedHere(actor, VehicleType.of(s.itemId, snap))) return false;
 
         if (actor.getVehicle() != null && vehicle == MtsBridge.vehicleOf(actor)) actor.stopRiding();
-        vehicle.discard();
+        MtsBridge.discard(vehicle);
         list.add(s);
         data.setDirty();
         if (target.equals(actor.getUUID())) removeOneKey(actor, s.label);
         Msg.send(actor, "&aVéhicule rangé dans le garage, intact ! (" + list.size() + "/" + max + ")");
+        return true;
+    }
+
+    /** true (et message) si le joueur est dans une zone garage mais qu'aucune ne prend ce type de véhicule. */
+    private static boolean refusedHere(ServerPlayer p, VehicleType type) {
+        GarageData.Zone any = zoneAt(p);
+        if (any == null || zoneAt(p, type) != null) return false;
+        Msg.send(p, "&cCe garage n'accepte pas les véhicules " + type.tag() + "&c (garage : &f" + any.typesLabel() + "&c).");
         return true;
     }
 
@@ -143,7 +158,7 @@ public final class Garage {
             CompoundTag snap = MtsBridge.snapshot(e);
             String id = MtsBridge.itemId(snap);
             items[i] = Gui.item(iconOf(id), "&e&l" + labelOf(id, snap),
-                    "&7Distance : &f" + (int) e.distanceTo(p) + " blocs", "&7Clique pour le ranger");
+                    "&7Type : " + VehicleType.of(id, snap).tag(), "&7Distance : &f" + (int) e.distanceTo(p) + " blocs", "&7Clique pour le ranger");
         }
         Gui.open(p, "&aQuel véhicule ranger ?", (n + 8) / 9, items, slot -> {
             if (slot < n) Gui.later(p, () -> {
@@ -158,8 +173,7 @@ public final class Garage {
 
     public static void retrieve(ServerPlayer p, int index) {
         // 1. On récupère la zone où se trouve le joueur
-        GarageData.Zone zone = zoneAt(p);
-        if (zone == null) {
+        if (zoneAt(p) == null) {
             Msg.send(p, "&cTu dois être dans une zone garage.");
             return;
         }
@@ -168,6 +182,11 @@ public final class Garage {
         List<GarageData.Stored> list = data.of(p.getUUID());
         if (index < 0 || index >= list.size()) return;
         GarageData.Stored s = list.get(index);
+        GarageData.Zone zone = zoneAt(p, typeOf(s));
+        if (zone == null) {
+            Msg.send(p, "&cCe garage ne peut pas sortir de véhicule " + typeOf(s).tag() + "&c (garage : &f" + zoneAt(p).typesLabel() + "&c). Va dans la bonne zone.");
+            return;
+        }
 
         // Mode « en main » : l'item du véhicule est donné, à poser dans la zone (sinon retour au garage)
         if (data.handMode.contains(p.getUUID())) {
@@ -227,22 +246,21 @@ public final class Garage {
             Msg.send(p, "&cTu dois être près d'un garage pour utiliser cette commande.");
             return;
         }
-        ItemStack[] items = new ItemStack[9];
-        items[1] = modeItem(p);
-        items[3] = Gui.item(Items.PAPER, "&e&lRentrer mon véhicule", "&7Monte dans ton véhicule ou reste à côté.");
-        items[5] = Gui.item(Items.PAPER, "&e&lVoir mon garage");
-        items[7] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
-        Gui.open(p, "&aGarage", 1, items, slot -> {
-            if (slot == 1) Gui.later(p, () -> {
-                toggleMode(p);
-                openMenu(p);
-            });
-            else if (slot == 3) Gui.later(p, () -> {
+        // Ligne 1 : rentrer / voir le garage. Ligne 2 : assurance / vente.
+        ItemStack[] items = new ItemStack[18];
+        items[2] = Gui.item(Items.PAPER, "&e&lRentrer mon véhicule", "&7Monte dans ton véhicule ou reste à côté.");
+        items[6] = Gui.item(Items.PAPER, "&e&lVoir mon garage");
+        items[11] = Gui.item(Items.SHIELD, "&b&lAssurer mes véhicules", "&7Paie une assurance : si le véhicule est détruit,",
+                "&7il revient seul dans ton garage (une seule fois).");
+        items[15] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
+        Gui.open(p, "&aGarage", 2, items, slot -> {
+            if (slot == 2) Gui.later(p, () -> {
                 p.closeContainer();
                 storeNearby(p);
             });
-            else if (slot == 5) Gui.later(p, () -> openList(p));
-            else if (slot == 7) Gui.later(p, () -> VehicleSale.openSell(p));
+            else if (slot == 6) Gui.later(p, () -> openList(p));
+            else if (slot == 11) Gui.later(p, () -> com.minenorth.vehicles.assurance.Insurance.openMenu(p));
+            else if (slot == 15) Gui.later(p, () -> VehicleSale.openSell(p));
         });
     }
 
@@ -254,11 +272,12 @@ public final class Garage {
         CompoundTag snap = MtsBridge.snapshot(vehicle);
         String id = MtsBridge.itemId(snap);
         String label = labelOf(id, snap);
+        if (refusedHere(p, VehicleType.of(id, snap))) return;
 
         ItemStack[] items = new ItemStack[27];
         items[11] = Gui.item(Items.LIME_CONCRETE, "&a&lStocker ce véhicule",
                 "&7" + label, "&7Garage : &e" + n + "/" + max, "&8Pièces, carburant et coffres conservés");
-        items[13] = Gui.item(iconOf(id), "&e&l" + label);
+        items[13] = Gui.item(iconOf(id), "&e&l" + label, "&7Type : " + VehicleType.of(id, snap).tag());
         items[15] = Gui.item(Items.RED_CONCRETE, "&c&lAnnuler");
         items[22] = Gui.item(Items.PAPER, "&e&lVoir mon garage");
         Gui.open(p, "&aStocker ce véhicule ?", 3, items, slot -> {
@@ -271,44 +290,78 @@ public final class Garage {
         });
     }
 
+    public static VehicleType typeOf(GarageData.Stored s) { return VehicleType.of(s.itemId, s.nbt); }
+
+    private static final java.util.Map<UUID, VehicleType> FILTER = new java.util.HashMap<>();
+
+    private static long count(List<GarageData.Stored> l, VehicleType t) {
+        return l.stream().filter(s -> typeOf(s) == t).count();
+    }
+
     public static void openList(ServerPlayer p) {
         GarageData data = GarageData.get(p.getServer());
-        List<GarageData.Stored> list = data.of(p.getUUID());
-        if (list.isEmpty()) {
+        List<GarageData.Stored> all = data.of(p.getUUID());
+        if (all.isEmpty()) {
             Msg.send(p, "&cTon garage est vide, aucun véhicule à récupérer.");
             return;
         }
-        // Une rangée de plus s'il le faut : les deux derniers emplacements sont le mode de sortie et la vente
-        int rows = Math.min(6, (list.size() + 10) / 9);
+        VehicleType filter = FILTER.get(p.getUUID());
+        // index réels des véhicules affichés (filtre Terrestre / Aérien / Maritime)
+        List<Integer> shown = new ArrayList<>();
+        List<GarageData.Stored> view = new ArrayList<>();
+        for (int i = 0; i < all.size(); i++) {
+            if (filter == null || typeOf(all.get(i)) == filter) {
+                shown.add(i);
+                view.add(all.get(i));
+            }
+        }
+        // Les 4 derniers emplacements : assurance, vente, mode de sortie, filtre
+        int rows = Math.min(6, Math.max(1, (shown.size() + 12) / 9));
         ItemStack[] items = new ItemStack[rows * 9];
-        ItemStack[] vehicles = listItems(list);
+        ItemStack[] vehicles = listItems(view, p);
         System.arraycopy(vehicles, 0, items, 0, Math.min(vehicles.length, items.length));
-        int modeSlot = items.length - 1, sellSlot = items.length - 2;
-        boolean extras = list.size() <= sellSlot;
+        int filterSlot = items.length - 1, modeSlot = items.length - 2, sellSlot = items.length - 3, insureSlot = items.length - 4;
+        boolean extras = shown.size() <= insureSlot;
+        if (shown.size() <= filterSlot) {
+            items[filterSlot] = Gui.item(filter == null ? Items.COMPASS : filter == VehicleType.AIR ? Items.FEATHER : filter == VehicleType.MER ? Items.WATER_BUCKET : Items.MINECART,
+                    "&e&lFiltre : " + (filter == null ? "&fTous" : filter.tag()),
+                    "&7Terrestre : &f" + count(all, VehicleType.TERRE) + " &7| Aérien : &f" + count(all, VehicleType.AIR) + " &7| Maritime : &f" + count(all, VehicleType.MER),
+                    "&8Clique pour changer de type");
+        }
         if (extras) {
             items[modeSlot] = modeItem(p);
             items[sellSlot] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
+            items[insureSlot] = Gui.item(Items.SHIELD, "&b&lAssurer un véhicule", "&7S'il est détruit, il revient dans ton garage.");
         }
-        Gui.open(p, "&aMon Garage", rows, items, slot -> {
-            if (slot < list.size()) Gui.later(p, () -> {
+        Gui.open(p, "&aMon Garage" + (filter == null ? "" : " - " + filter.label), rows, items, slot -> {
+            if (slot < shown.size()) Gui.later(p, () -> {
                 p.closeContainer();
-                retrieve(p, slot);
+                retrieve(p, shown.get(slot));
+            });
+            else if (slot == filterSlot) Gui.later(p, () -> {
+                VehicleType[] v = VehicleType.values();
+                VehicleType next = filter == null ? v[0] : filter.ordinal() + 1 < v.length ? v[filter.ordinal() + 1] : null;
+                if (next == null) FILTER.remove(p.getUUID()); else FILTER.put(p.getUUID(), next);
+                openList(p);
             });
             else if (extras && slot == modeSlot) Gui.later(p, () -> {
                 toggleMode(p);
                 openList(p);
             });
             else if (extras && slot == sellSlot) Gui.later(p, () -> VehicleSale.openSell(p));
+            else if (extras && slot == insureSlot) Gui.later(p, () -> com.minenorth.vehicles.assurance.Insurance.openMenu(p));
         });
     }
 
-    public static ItemStack[] listItems(List<GarageData.Stored> list) {
+    public static ItemStack[] listItems(List<GarageData.Stored> list, ServerPlayer p) {
         int rows = Math.min(6, Math.max(1, (list.size() + 8) / 9));
         ItemStack[] items = new ItemStack[rows * 9];
         for (int i = 0; i < list.size() && i < items.length; i++) {
             GarageData.Stored s = list.get(i);
             items[i] = Gui.item(iconOf(s.itemId), "&e&l" + s.label,
-                    "&7Clique pour sortir ce véhicule", "&8Intact : pièces, carburant et coffres conservés");
+                    "&7Type : " + typeOf(s).tag(), "&7Clique pour sortir ce véhicule", "&8Intact : pièces, carburant et coffres conservés",
+                    MtsBridge.isInsured(s.nbt) ? "&bAssuré" : "&8Non assuré",
+                    p != null && zoneAt(p) != null && zoneAt(p, typeOf(s)) == null ? "&cNon disponible dans ce garage" : "");
         }
         return items;
     }

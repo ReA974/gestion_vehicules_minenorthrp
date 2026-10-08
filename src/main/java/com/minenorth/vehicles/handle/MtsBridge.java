@@ -23,6 +23,8 @@ import java.util.UUID;
  */
 public final class MtsBridge {
     public static final String OWNER = "mnrp_owner";
+    /** Drapeau « véhicule assuré » : vit dans les données persistantes de l'entité, donc dans le NBT sauvegardé au garage. */
+    public static final String INSURED = "mnrp_insured";
 
     private MtsBridge() {}
 
@@ -79,11 +81,119 @@ public final class MtsBridge {
         return ("mts:" + pack + "." + sys + nbt.getString("subName")).toLowerCase(Locale.ROOT);
     }
 
+    /** État du véhicule au moment où il est sorti du garage (assuré seulement) : c'est celui qu'on lui rend après une destruction. */
+    public static final String ORIGIN = "mnrp_origin";
+
+    public static void setOrigin(Entity e, CompoundTag state) { e.getPersistentData().put(ORIGIN, state.copy()); }
+
+    public static CompoundTag origin(Entity e) {
+        CompoundTag d = e.getPersistentData();
+        return d.contains(ORIGIN, 10) ? d.getCompound(ORIGIN).copy() : null;
+    }
+
+    /** Retrait voulu par ce mod (rangement, fourrière, recentrage...) : l'assurance ne doit PAS jouer. */
+    public static final String HANDLED = "mnrp_handled";
+
+    public static void discard(Entity e) {
+        e.getPersistentData().putBoolean(HANDLED, true);
+        e.discard();
+    }
+
+    public static boolean isInsured(Entity e) { return e.getPersistentData().getBoolean(INSURED); }
+
+    public static boolean isInsured(CompoundTag saved) { return saved.getCompound("ForgeData").getBoolean(INSURED); }
+
+    public static void setInsured(CompoundTag saved, boolean insured) {
+        CompoundTag fd = saved.getCompound("ForgeData");
+        if (insured) fd.putBoolean(INSURED, true); else fd.remove(INSURED);
+        saved.put("ForgeData", fd);
+    }
+
+    /** MTS a marqué le véhicule comme détruit (dégâts >= points de vie du modèle). */
+    public static boolean outOfHealth(Entity e) {
+        return field(field(e, "entity"), "outOfHealth") instanceof Boolean b && b;
+    }
+
+    /** Remet à zéro les dégâts d'un NBT de véhicule sauvegardé (variable « damage », où qu'elle soit rangée). */
+    public static void repair(CompoundTag t) {
+        for (String k : new java.util.ArrayList<>(t.getAllKeys())) {
+            net.minecraft.nbt.Tag v = t.get(k);
+            if (v instanceof CompoundTag c) repair(c);
+            else if (k.equals("damage") && v instanceof net.minecraft.nbt.NumericTag) t.putDouble(k, 0);
+        }
+    }
+
+    // ------------------------------------------------------------------ plaque posée (lue dans MTS par réflexion)
+
+    private static Object field(Object o, String name) {
+        if (o == null) return null;
+        for (Class<?> c = o.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            try {
+                java.lang.reflect.Field f = c.getDeclaredField(name);
+                f.setAccessible(true);
+                return f.get(o);
+            } catch (NoSuchFieldException ignored) {
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static final String[] PLATE_FIELDS = {"Code", "License Plate", "Plate", "Plaque", "Immatriculation"};
+
+    private static String plateIn(Object holder) {
+        if (!(field(holder, "text") instanceof java.util.Map<?, ?> m)) return "";
+        for (java.util.Map.Entry<?, ?> en : m.entrySet()) {
+            if (field(en.getKey(), "fieldName") instanceof String n && en.getValue() instanceof String v && !v.isBlank())
+                for (String c : PLATE_FIELDS) if (c.equalsIgnoreCase(n.trim())) return v.trim();
+        }
+        return "";
+    }
+
+    /** Texte de la plaque posée sur le véhicule (pièce mts:gvp.eu_plate), ou "" s'il n'en a pas ou si MTS est illisible. */
+    public static String plate(Entity e) {
+        try {
+            Object in = field(e, "entity");
+            if (in == null) return "";
+            String found = plateIn(in);
+            if (!found.isEmpty()) return found;
+            if (field(in, "allParts") instanceof Iterable<?> parts) {
+                for (Object part : parts) {
+                    found = plateIn(part);
+                    if (!found.isEmpty()) return found;
+                }
+                for (Object part : parts) {
+                    if (field(field(part, "definition"), "systemName") instanceof String s && s.toLowerCase(Locale.ROOT).contains("plate")
+                            && field(part, "text") instanceof java.util.Map<?, ?> m)
+                        for (Object v : m.values()) if (v instanceof String str && !str.isBlank()) return str.trim();
+                }
+            }
+        } catch (Throwable ignored) {}
+        return "";
+    }
+
+    /** Définition MTS : motorized.isAircraft / isBlimp (lue par réflexion, false si illisible). */
+    public static boolean isAircraft(Entity e) {
+        try {
+            Object mo = field(field(field(e, "entity"), "definition"), "motorized");
+            return field(mo, "isAircraft") instanceof Boolean a && a || field(mo, "isBlimp") instanceof Boolean b && b;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static CompoundTag snapshot(Entity vehicle) {
         CompoundTag tag = new CompoundTag();
         vehicle.saveWithoutId(tag);
         tag.remove("UUID");
         tag.remove("Passengers");
+        if (isAircraft(vehicle)) { // le type aérien suit le véhicule dans son NBT
+            CompoundTag fd = tag.getCompound("ForgeData");
+            fd.putString(com.minenorth.vehicles.garage.VehicleType.NBT_KEY, "air");
+            tag.put("ForgeData", fd);
+        }
+        if (tag.contains("ForgeData", 10)) tag.getCompound("ForgeData").remove(ORIGIN); // la photo d'origine ne suit pas le véhicule au garage
         return tag;
     }
 

@@ -19,11 +19,31 @@ public class GarageData extends SavedData {
 
     public static final class Zone {
         public String name, dim, tag = "";
+        /** Types acceptés, séparés par des virgules ("terre,air,mer") ; "" = tous. */
+        public String types = "";
         public double x, y, z, radius;
+
+        public boolean accepts(VehicleType t) {
+            if (types.isEmpty()) return true;
+            for (String s : types.split(",")) if (VehicleType.parse(s) == t) return true;
+            return false;
+        }
+
+        public String typesLabel() {
+            if (types.isEmpty()) return "tous types";
+            StringBuilder b = new StringBuilder();
+            for (String s : types.split(",")) {
+                VehicleType t = VehicleType.parse(s);
+                if (t != null) b.append(b.length() > 0 ? ", " : "").append(t.label);
+            }
+            return b.toString();
+        }
     }
 
     public static final class Stored {
         public String label = "", itemId = "";
+        /** Plaque posée au moment de la mise en fourrière (affichage seulement), "" sinon. */
+        public String plate = "";
         public CompoundTag nbt = new CompoundTag();
     }
 
@@ -60,6 +80,7 @@ public class GarageData extends SavedData {
             t.putString("name", z.name);
             t.putString("dim", z.dim);
             t.putString("tag", z.tag);
+            t.putString("types", z.types);
             t.putDouble("x", z.x);
             t.putDouble("y", z.y);
             t.putDouble("z", z.z);
@@ -128,6 +149,7 @@ public class GarageData extends SavedData {
             z.name = t.getString("name");
             z.dim = t.getString("dim");
             z.tag = t.getString("tag");
+            z.types = t.getString("types");
             z.x = t.getDouble("x");
             z.y = t.getDouble("y");
             z.z = t.getDouble("z");

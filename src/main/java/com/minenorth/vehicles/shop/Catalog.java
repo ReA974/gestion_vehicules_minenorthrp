@@ -18,7 +18,7 @@ import java.util.Map;
 /** Catalogue du vendeur : config/minenorth_vehicles/catalog.json */
 public final class Catalog {
     public static final class Vehicle {
-        public String category, model, color, item;
+        public String category, model, color, item, type;
         public int price;
     }
 
@@ -26,11 +26,13 @@ public final class Catalog {
     public static final List<String> CATEGORIES = new ArrayList<>();
     public static final Map<String, String> CATEGORY_ICON = new HashMap<>();
     public static final Map<String, String> COLOR_ICON = new HashMap<>();
+    /** Type par catégorie ("terre", "air", "mer"), optionnel. */
+    public static final Map<String, String> CATEGORY_TYPE = new HashMap<>();
 
     private static final String SAMPLE = """
             {
               "categories": [
-                { "name": "Moto", "icon": "minecraft:book" },
+                { "name": "Moto", "icon": "minecraft:book", "type": "terre" },
                 { "name": "Berline", "icon": "minecraft:book" }
               ],
               "colorIcons": {
@@ -59,6 +61,7 @@ public final class Catalog {
         CATEGORIES.clear();
         CATEGORY_ICON.clear();
         COLOR_ICON.clear();
+        CATEGORY_TYPE.clear();
         Path f = file();
         try {
             if (!Files.exists(f)) {
@@ -76,6 +79,7 @@ public final class Catalog {
                     String n = o.get("name").getAsString();
                     CATEGORIES.add(n);
                     if (o.has("icon")) CATEGORY_ICON.put(n, o.get("icon").getAsString());
+                    if (o.has("type")) CATEGORY_TYPE.put(n, o.get("type").getAsString());
                 }
             }
             if (root.has("colorIcons")) {
@@ -90,6 +94,7 @@ public final class Catalog {
                 v.model = o.get("model").getAsString();
                 v.color = o.has("color") ? o.get("color").getAsString() : "Défaut";
                 v.item = o.get("item").getAsString();
+                v.type = o.has("type") ? o.get("type").getAsString() : null;
                 v.price = o.get("price").getAsInt();
                 VEHICLES.add(v);
                 if (!CATEGORIES.contains(v.category)) CATEGORIES.add(v.category);

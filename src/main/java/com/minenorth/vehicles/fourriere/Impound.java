@@ -11,7 +11,7 @@ import com.minenorth.vehicles.handle.Payment;
 import com.minenorth.vehicles.miscs.Gui;
 import com.minenorth.vehicles.miscs.Msg;
 import fr.minenorth.api.PayResult;
-import com.mojang.authlib.GameProfile;
+import fr.minenorth.api.MineNorth;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
@@ -32,8 +32,7 @@ public final class Impound {
     private Impound() {}
 
     public static String ownerName(MinecraftServer server, UUID id) {
-        if (server.getProfileCache() == null) return id.toString().substring(0, 8);
-        return server.getProfileCache().get(id).map(GameProfile::getName).orElse(id.toString().substring(0, 8));
+        return MineNorth.displayName(server, id);
     }
 
     // ------------------------------------------------------------------ police
@@ -48,7 +47,9 @@ public final class Impound {
         String label = Garage.labelOf(MtsBridge.itemId(snap), snap);
 
         ItemStack[] items = new ItemStack[9];
-        items[1] = Gui.item(Items.PAPER, "&ePropriétaire : &f" + ownerName(p.getServer(), owner), "&7Modèle : &f" + label);
+        String plate = MtsBridge.plate(vehicle);
+        items[1] = Gui.item(Items.PAPER, "&ePropriétaire : &f" + ownerName(p.getServer(), owner), "&7Modèle : &f" + label,
+                "&7Plaque : " + (plate.isEmpty() ? "&caucune plaque posée" : "&f" + plate));
         items[3] = Gui.item(Items.PAPER, "&e&lAppeler le mécano", "&7Le véhicule reste sur place, un mécano est prévenu.");
         items[5] = Gui.item(Items.PAPER, "&c&lForcer la mise en fourrière", "&7Retire le véhicule immédiatement et le met en fourrière.");
         Gui.open(p, "&cMise en fourrière", 1, items, slot -> {
@@ -83,10 +84,12 @@ public final class Impound {
         s.itemId = MtsBridge.itemId(snap);
         s.label = Garage.labelOf(s.itemId, snap);
 
-        vehicle.discard();
+        String plate = MtsBridge.plate(vehicle);
+        s.plate = plate;
+        MtsBridge.discard(vehicle);
         list.add(s);
         d.setDirty();
-        Msg.send(actor, "&aVéhicule de " + ownerName(server, owner) + " mis en fourrière, intact.");
+        Msg.send(actor, "&aVéhicule de " + ownerName(server, owner) + (plate.isEmpty() ? "" : " (plaque " + plate + ")") + " mis en fourrière, intact.");
         ServerPlayer o = server.getPlayerList().getPlayer(owner);
         if (o != null) Msg.send(o, "&cTon véhicule (" + s.label + ") a été mis en fourrière. Rends-toi au PNJ de la fourrière.");
         return true;
@@ -106,6 +109,7 @@ public final class Impound {
         for (int i = 0; i < n; i++) {
             GarageData.Stored s = list.get(i);
             items[i] = Gui.item(Garage.iconOf(s.itemId), "&e&l" + s.label,
+                    s.plate.isEmpty() ? "&7Aucune plaque posée" : "&7Plaque : &f" + s.plate,
                     "&c" + price + "€ pour récupérer", "&8Intact : pièces, carburant et coffres conservés",
                     "&7Clique pour choisir le mode de paiement");
         }
@@ -185,7 +189,7 @@ public final class Impound {
         }
         Payment.Result paid = Payment.pay(p, price, method, den, "garage:fourriere");
         if (!paid.ok()) {
-            e.discard();
+            MtsBridge.discard(e);
             Msg.send(p, "&c" + paid.message());
             return;
         }
