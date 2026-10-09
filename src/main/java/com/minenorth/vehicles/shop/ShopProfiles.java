@@ -51,8 +51,8 @@ public final class ShopProfiles {
                 "ferme":    { "title": "&a&lVéhicules de ferme", "categories": ["Ferme"] },
                 "bateaux":  { "title": "&b&lBateaux", "categories": ["Bateau"], "placeRadius": 5.0 },
                 "aviation": { "title": "&d&lAvions et Hélicoptères", "categories": ["Avion", "Hélicoptère"], "placeRadius": 6.0 },
-                "police":   { "title": "&9&lConcession Police Nationale", "categories": ["Police"], "plates": true, "service": "police", "priceFactor": 1.0 },
-                "pompier":  { "title": "&c&lConcession Sapeurs-Pompiers", "categories": ["Pompiers"], "plates": true, "service": "pompier", "priceFactor": 1.0 }
+                "police":   { "title": "&9&lConcession Police Nationale", "categories": ["Police"], "plates": false, "service": "police", "priceFactor": 1.0 },
+                "pompier":  { "title": "&c&lConcession Sapeurs-Pompiers", "categories": ["Pompiers"], "plates": false, "service": "pompier", "priceFactor": 1.0 }
               }
             }
             """;
