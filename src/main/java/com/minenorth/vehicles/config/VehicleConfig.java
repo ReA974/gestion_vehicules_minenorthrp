@@ -24,6 +24,10 @@ public final class VehicleConfig {
     public static final ForgeConfigSpec.BooleanValue AUTO_PROMPT, GIVE_KEY, THEMED_GUI, CUSTOM_GUI, FILL_FUEL;
     public static final ForgeConfigSpec.ConfigValue<String> FUEL_FLUID;
     public static final ForgeConfigSpec.ConfigValue<String> POLICE_TAG;
+    public static final ForgeConfigSpec.BooleanValue UNSTUCK_REQUIRE_BUGGED;
+    public static final ForgeConfigSpec.IntValue UNSTUCK_RADIUS, UNSTUCK_COOLDOWN;
+    public static final ForgeConfigSpec.DoubleValue UNSTUCK_TOLERANCE;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> UNSTUCK_ROADS;
     public static final ForgeConfigSpec.BooleanValue REGISTRY_JSON;
 
     public record Denom(Item item, int value) {}
@@ -103,6 +107,17 @@ public final class VehicleConfig {
                 .define("policeTag", "police.check");
         REGISTRY_JSON = b.comment("Exporter aussi le fichier en clair dans <monde>/minenorth_immatriculations.json")
                 .define("exportJson", true);
+        b.pop();
+
+        b.comment("Kit de dépannage : téléporte un véhicule bloqué sur l'asphalte le plus proche (l'item est consommé)").push("depannage");
+        UNSTUCK_REQUIRE_BUGGED = b.comment("true = le kit ne marche que sur un véhicule détecté bloqué (dans un bloc, sous le sol, dans le vide)")
+                .define("requireBugged", true);
+        UNSTUCK_TOLERANCE = b.comment("Profondeur (blocs) à partir de laquelle un véhicule enfoncé dans un bloc est considéré bloqué")
+                .defineInRange("stuckTolerance", 0.5, 0.05, 2.0);
+        UNSTUCK_RADIUS = b.comment("Rayon de recherche de l'asphalte (blocs)").defineInRange("roadSearchRadius", 64, 4, 256);
+        UNSTUCK_COOLDOWN = b.comment("Ticks minimum entre deux utilisations par un même joueur").defineInRange("cooldownTicks", 20, 0, 1200);
+        UNSTUCK_ROADS = b.comment("Préfixes d'id de blocs considérés comme route (mod Roads 'n' Vehicles). Les escaliers sont ignorés.")
+                .defineList("roadBlocks", Arrays.asList("roads-n-vehicles:asphalt"), o -> o instanceof String);
         b.pop();
 
         SPEC = b.build();

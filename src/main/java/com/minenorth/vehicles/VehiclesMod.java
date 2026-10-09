@@ -14,6 +14,7 @@ public class VehiclesMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public VehiclesMod() {
+        com.minenorth.vehicles.depannage.ModItems.register(net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus());
         // Config côté serveur uniquement : le client ne crée aucun fichier (les valeurs par défaut s'appliquent).
         if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER) {
             ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, VehicleConfig.SPEC, "minenorth-garage.toml");

@@ -1,0 +1,12 @@
+{
+ "item.minenorth_rp_vehicles.kit_depannage": "Recovery Kit",
+ "item.minenorth_rp_vehicles.kit_depannage.tooltip": "Right-click a stuck vehicle: it is moved to the nearest asphalt. Single use.",
+ "itemGroup.minenorth_rp_vehicles.garage": "Garage",
+ "item.minenorth_rp_vehicles.baton_zone": "Garage Zone Wand",
+ "item.minenorth_rp_vehicles.baton_zone.tooltip": "Right-click a block: center. Left-click: edge (radius).",
+ "item.minenorth_rp_vehicles.baton_zone.tooltip2": "Then /garagezone select <name> [tag]",
+ "item.minenorth_rp_vehicles.tablette_garage": "Garage Tablet",
+ "item.minenorth_rp_vehicles.tablette_garage.tooltip": "Right-click: opens the garage menu (/garagemenu). Admin.",
+ "item.minenorth_rp_vehicles.tablette_concessionnaire": "Dealer Tablet",
+ "item.minenorth_rp_vehicles.tablette_concessionnaire.tooltip": "Right-click: opens the vehicle shop (/vendeurvehicule). Admin."
+}

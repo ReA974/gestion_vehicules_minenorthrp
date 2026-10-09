@@ -80,6 +80,16 @@ public final class VehicleCommands {
         // --- Zones garage ---
         d.register(Commands.literal("garagezone").requires(VehicleCommands::admin)
                 .then(Commands.literal("list").executes(c -> listZones(c.getSource())))
+                .then(Commands.literal("wand").executes(c -> {
+                    ServerPlayer p = c.getSource().getPlayerOrException();
+                    net.minecraftforge.items.ItemHandlerHelper.giveItemToPlayer(p,
+                            new net.minecraft.world.item.ItemStack(com.minenorth.vehicles.depannage.ModItems.ZONE_WAND.get()));
+                    return 1;
+                }))
+                .then(Commands.literal("select").then(Commands.argument("name", StringArgumentType.word())
+                        .executes(c -> setZoneFromWand(c, ""))
+                        .then(Commands.argument("tag", StringArgumentType.word())
+                                .executes(c -> setZoneFromWand(c, StringArgumentType.getString(c, "tag"))))))
                 .then(Commands.literal("remove").then(Commands.argument("name", StringArgumentType.word())
                         .executes(c -> removeZone(c.getSource(), StringArgumentType.getString(c, "name")))))
                 .then(Commands.literal("settype").then(Commands.argument("name", StringArgumentType.word())
@@ -128,23 +138,42 @@ public final class VehicleCommands {
 
     // ------------------------------------------------------------------ zones
 
+    /** Zone définie avec le bâton : centre = bloc cliqué (droit), rayon = distance horizontale jusqu'au bloc cliqué (gauche). */
+    private static int setZoneFromWand(CommandContext<CommandSourceStack> c, String tag) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        var sel = com.minenorth.vehicles.depannage.ZoneSelection.of(p.getUUID());
+        if (sel == null || sel.center == null || sel.edge == null) {
+            say(c.getSource(), "&cSélection incomplète : clic droit (centre) puis clic gauche (bord) avec le bâton de zone. &7(/garagezone wand)");
+            return 0;
+        }
+        if (!sel.dim.equals(p.level().dimension().location().toString())) {
+            say(c.getSource(), "&cLa sélection a été faite dans une autre dimension.");
+            return 0;
+        }
+        return setZone(p, StringArgumentType.getString(c, "name"), sel.center.getX() + 0.5, sel.center.getY() + 1, sel.center.getZ() + 0.5,
+                com.minenorth.vehicles.depannage.ZoneSelection.radius(sel), tag);
+    }
+
     private static int setZone(CommandContext<CommandSourceStack> c, double radius, String tag) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
-        String name = StringArgumentType.getString(c, "name");
+        return setZone(p, StringArgumentType.getString(c, "name"), p.getX(), p.getY(), p.getZ(), radius, tag);
+    }
+
+    private static int setZone(ServerPlayer p, String name, double x, double y, double zz, double radius, String tag) {
         GarageData g = GarageData.get(p.getServer());
         GarageData.Zone z = new GarageData.Zone();
         z.name = name;
         z.dim = p.level().dimension().location().toString();
-        z.x = p.getX();
-        z.y = p.getY();
-        z.z = p.getZ();
+        z.x = x;
+        z.y = y;
+        z.z = zz;
         z.radius = radius;
         // Tags spéciaux « police » / « pompier » : garage de service (agents en service uniquement, liste de véhicules séparée).
         z.service = com.minenorth.vehicles.garage.Garage.serviceOfKeyword(tag);
         z.tag = z.service.isEmpty() ? tag : "";
         g.zones.put(name, z);
         g.setDirty();
-        Msg.send(p, "&aGarage \"" + name + "\" défini à ta position (" + radius + " blocs, "
+        Msg.send(p, "&aGarage \"" + name + "\" défini (" + radius + " blocs, "
                 + (!z.service.isEmpty() ? "GARAGE " + z.service.toUpperCase(java.util.Locale.ROOT) + " : agents en service uniquement" : tag.isEmpty() ? "public" : "tag requis : " + tag) + ").");
         return 1;
     }

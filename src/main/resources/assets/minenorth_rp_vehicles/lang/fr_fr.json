@@ -1,0 +1,12 @@
+{
+ "item.minenorth_rp_vehicles.kit_depannage": "Kit de dépannage",
+ "item.minenorth_rp_vehicles.kit_depannage.tooltip": "Clic droit sur un véhicule bloqué : il est replacé sur l'asphalte le plus proche. Usage unique.",
+ "itemGroup.minenorth_rp_vehicles.garage": "Garage",
+ "item.minenorth_rp_vehicles.baton_zone": "Bâton de zone garage",
+ "item.minenorth_rp_vehicles.baton_zone.tooltip": "Clic droit sur un bloc : centre. Clic gauche : bord (rayon).",
+ "item.minenorth_rp_vehicles.baton_zone.tooltip2": "Puis /garagezone select <nom> [tag]",
+ "item.minenorth_rp_vehicles.tablette_garage": "Tablette garage",
+ "item.minenorth_rp_vehicles.tablette_garage.tooltip": "Clic droit : ouvre le menu du garage (/garagemenu). Admin.",
+ "item.minenorth_rp_vehicles.tablette_concessionnaire": "Tablette concessionnaire",
+ "item.minenorth_rp_vehicles.tablette_concessionnaire.tooltip": "Clic droit : ouvre la boutique de véhicules (/vendeurvehicule). Admin."
+}
