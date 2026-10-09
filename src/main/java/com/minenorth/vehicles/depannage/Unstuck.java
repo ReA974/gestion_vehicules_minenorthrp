@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Kit de dépannage. Un véhicule « bloqué » (enfoncé dans un bloc, sous le monde) est replacé sur l'asphalte le plus proche.
+ * Cric de dépannage. Un véhicule « bloqué » (enfoncé dans un bloc, sous le monde) est replacé sur l'asphalte le plus proche.
  * Le déplacement passe par le NBT complet du véhicule (même technique que le recentrage du Spawner) : pièces, carburant,
  * coffres, propriétaire, assurance, plaque... sont conservés tels quels. Le kit n'est consommé qu'en cas de succès.
  */
@@ -81,16 +81,16 @@ public final class Unstuck {
             return;
         }
         if (VehicleConfig.UNSTUCK_REQUIRE_BUGGED.get() && !isBugged(level, v)) {
-            Msg.send(p, "&eCe véhicule ne semble pas bloqué : le kit n'a pas été utilisé.");
+            Msg.send(p, "&eCe véhicule ne semble pas bloqué : le cric n'a pas été utilisé.");
             return;
         }
         Vec3 spot = findRoad(level, v);
         if (spot == null) {
-            Msg.send(p, "&cAucune route en asphalte à proximité (" + VehicleConfig.UNSTUCK_RADIUS.get() + " blocs) : le kit n'a pas été utilisé.");
+            Msg.send(p, "&cAucune route en asphalte à proximité (" + VehicleConfig.UNSTUCK_RADIUS.get() + " blocs) : le cric n'a pas été utilisé.");
             return;
         }
         if (!teleport(level, v, spot)) {
-            Msg.send(p, "&cImpossible de déplacer ce véhicule : le kit n'a pas été utilisé.");
+            Msg.send(p, "&cImpossible de déplacer ce véhicule : le cric n'a pas été utilisé.");
             return;
         }
         ItemStack st = p.getItemInHand(hand);
