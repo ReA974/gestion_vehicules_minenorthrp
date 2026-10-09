@@ -42,6 +42,7 @@ public final class ShopProfiles {
 
     private static final Map<String, Profile> PROFILES = new LinkedHashMap<>();
     private static long loadedMtime = -1;
+    private static long lastCheck;
 
     private static final String SAMPLE = """
             {
@@ -66,6 +67,10 @@ public final class ShopProfiles {
     private static synchronized void ensureLoaded() {
         // Config côté serveur uniquement : le client ne crée ni ne lit aucun fichier.
         if (net.minecraftforge.fml.loading.FMLEnvironment.dist != net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER) return;
+        // Rechargé à chaud, mais la date du fichier n'est lue qu'une fois toutes les 3 s (appelé à chaque ouverture / pose).
+        long nowMs = System.currentTimeMillis();
+        if (loadedMtime != -1 && nowMs - lastCheck < 3000) return;
+        lastCheck = nowMs;
         Path f = file();
         try {
             if (!Files.exists(f)) {
