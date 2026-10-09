@@ -1,12 +1,12 @@
 {
- "item.minenorth_rp_vehicles.kit_depannage": "Recovery Kit",
- "item.minenorth_rp_vehicles.kit_depannage.tooltip": "Right-click a stuck vehicle: it is moved to the nearest asphalt. Single use.",
+ "item.minenorth_rp_vehicles.kit_depannage": "Kit de dépannage",
+ "item.minenorth_rp_vehicles.kit_depannage.tooltip": "Clic droit sur un véhicule bloqué : il est replacé sur l'asphalte le plus proche. Usage unique.",
  "itemGroup.minenorth_rp_vehicles.garage": "Garage",
- "item.minenorth_rp_vehicles.baton_zone": "Garage Zone Wand",
- "item.minenorth_rp_vehicles.baton_zone.tooltip": "Right-click a block: center. Left-click: edge (radius).",
- "item.minenorth_rp_vehicles.baton_zone.tooltip2": "Then /garagezone select <name> [tag]",
- "item.minenorth_rp_vehicles.tablette_garage": "Garage Tablet",
- "item.minenorth_rp_vehicles.tablette_garage.tooltip": "Right-click: opens the garage menu (/garagemenu). Admin.",
- "item.minenorth_rp_vehicles.tablette_concessionnaire": "Dealer Tablet",
- "item.minenorth_rp_vehicles.tablette_concessionnaire.tooltip": "Right-click: opens the vehicle shop (/vendeurvehicule). Admin."
+ "item.minenorth_rp_vehicles.baton_zone": "Bâton de zone garage",
+ "item.minenorth_rp_vehicles.baton_zone.tooltip": "Clic droit sur un bloc : centre. Clic gauche : bord (rayon).",
+ "item.minenorth_rp_vehicles.baton_zone.tooltip2": "Puis /garagezone select <nom> [tag]",
+ "item.minenorth_rp_vehicles.tablette_garage": "Tablette garage",
+ "item.minenorth_rp_vehicles.tablette_garage.tooltip": "Clic droit : ouvre le menu du garage (/garagemenu). Admin.",
+ "item.minenorth_rp_vehicles.tablette_concessionnaire": "Tablette concessionnaire",
+ "item.minenorth_rp_vehicles.tablette_concessionnaire.tooltip": "Clic droit : ouvre la boutique de véhicules (/vendeurvehicule). Admin."
 }
