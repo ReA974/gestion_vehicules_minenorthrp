@@ -62,9 +62,10 @@ public final class VehicleEvents {
     }
 
     private static String enterMessage(GarageData.Zone z) {
+        String key = z.service.isEmpty() ? z.tag : "garage." + z.service;   // zones de service : messages « garage.police » / « garage.pompier »
         for (String s : VehicleConfig.ZONE_MESSAGES.get()) {
             int i = s.indexOf('=');
-            if (i > 0 && s.substring(0, i).trim().equals(z.tag)) return s.substring(i + 1);
+            if (i > 0 && s.substring(0, i).trim().equals(key)) return s.substring(i + 1);
         }
         return VehicleConfig.ENTER_DEFAULT.get();
     }

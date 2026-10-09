@@ -79,7 +79,8 @@ public final class HandRetrieve {
         GarageData data = GarageData.get(server);
         GarageData.Pending pe = data.pending.remove(id);
         if (pe == null) return;
-        data.of(id).add(pe.vehicle);
+        GarageData.Zone pz = data.zones.get(pe.zone);
+        data.of(pz != null && !pz.service.isEmpty() ? Garage.serviceKey(id, pz.service) : id).add(pe.vehicle);   // retour au garage d'où il est sorti
         ServerPlayer p = server.getPlayerList().getPlayer(id);
         if (p != null) {
             if (strip) stripOne(p, pe.vehicle.itemId);

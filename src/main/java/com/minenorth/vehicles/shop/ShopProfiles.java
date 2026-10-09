@@ -25,6 +25,13 @@ public final class ShopProfiles {
         public double placeRadius = -1;
         /** Donne 2 plaques (mts:gvp.eu_plate) et inscrit la vente au fichier des immatriculations. null = ancien comportement (deviné d'après le titre). */
         public Boolean plates;
+        /** Concessionnaire de service : "police" ou "pompier" = réservé aux agents qui ont pris leur service (tablette). "" = public. */
+        public String service = "";
+        /** Multiplicateur du prix du catalogue (1 = prix normal, 0 = gratuit : dotation de service). */
+        public double priceFactor = 1.0;
+
+        /** Prix réellement payé pour ce véhicule dans ce vendeur. */
+        public int priceOf(int catalogPrice) { return (int) Math.max(0, Math.round(catalogPrice * priceFactor)); }
 
         public boolean givesPlates() {
             if (plates != null) return plates;
@@ -43,7 +50,9 @@ public final class ShopProfiles {
                 "camions":  { "title": "&6&lCamions et Remorques", "categories": ["Camion", "Remorque"], "plates": true },
                 "ferme":    { "title": "&a&lVéhicules de ferme", "categories": ["Ferme"] },
                 "bateaux":  { "title": "&b&lBateaux", "categories": ["Bateau"], "placeRadius": 5.0 },
-                "aviation": { "title": "&d&lAvions et Hélicoptères", "categories": ["Avion", "Hélicoptère"], "placeRadius": 6.0 }
+                "aviation": { "title": "&d&lAvions et Hélicoptères", "categories": ["Avion", "Hélicoptère"], "placeRadius": 6.0 },
+                "police":   { "title": "&9&lConcession Police Nationale", "categories": ["Police"], "plates": true, "service": "police", "priceFactor": 1.0 },
+                "pompier":  { "title": "&c&lConcession Sapeurs-Pompiers", "categories": ["Pompiers"], "plates": true, "service": "pompier", "priceFactor": 1.0 }
               }
             }
             """;
@@ -80,6 +89,9 @@ public final class ShopProfiles {
                 if (o.has("categories")) for (JsonElement c : o.getAsJsonArray("categories")) p.categories.add(c.getAsString());
                 if (o.has("placeRadius")) p.placeRadius = o.get("placeRadius").getAsDouble();
                 if (o.has("plates")) p.plates = o.get("plates").getAsBoolean();
+                if (o.has("service")) p.service = com.minenorth.vehicles.garage.Garage.serviceOfKeyword(o.get("service").getAsString());
+                else if (o.has("police") && o.get("police").getAsBoolean()) p.service = "police";   // ancien réglage
+                if (o.has("priceFactor")) p.priceFactor = Math.max(0, o.get("priceFactor").getAsDouble());
                 PROFILES.put(p.id, p);
             }
         } catch (Exception ex) {

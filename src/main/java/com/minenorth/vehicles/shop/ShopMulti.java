@@ -69,6 +69,7 @@ public final class ShopMulti {
             Msg.send(p, "&cVendeur inconnu : " + shopId + " (voir shops.json).");
             return;
         }
+        if (!sp.service.isEmpty() && !dutyOk(p, sp.service)) return;
         if (!ShopZoneData.get(p.getServer()).zones.containsKey(sp.id)) {
             Msg.send(p, "&cAucune zone de pose pour ce vendeur. Le staff doit faire /vendeurzone set " + sp.id + ".");
             return;
@@ -80,6 +81,20 @@ public final class ShopMulti {
         }
         if (cats.size() == 1) openModels(p, sp, cats.get(0), false);
         else openCategories(p, sp, cats);
+    }
+
+    /** Concession de service (police / pompiers) : il faut appartenir au service ET avoir pris son service (le staff passe toujours). */
+    private static boolean dutyOk(ServerPlayer p, String service) {
+        if (p.hasPermissions(2)) return true;
+        if (!com.minenorth.vehicles.garage.Garage.serviceMember(p, service)) {
+            Msg.send(p, "&cConcession réservée aux " + com.minenorth.vehicles.garage.Garage.serviceLabel(service) + ".");
+            return false;
+        }
+        if (!com.minenorth.vehicles.garage.Garage.serviceOnDuty(p, service)) {
+            Msg.send(p, "&cPrends d'abord ton service (tablette > prise de service) pour accéder à la concession.");
+            return false;
+        }
+        return true;
     }
 
     private static List<String> categoriesOf(ShopProfiles.Profile sp) {
@@ -121,9 +136,9 @@ public final class ShopMulti {
         for (int i = 0; i < n; i++) {
             List<Catalog.Vehicle> vs = models.get(names.get(i));
             int min = Integer.MAX_VALUE;
-            for (Catalog.Vehicle v : vs) min = Math.min(min, v.price);
+            for (Catalog.Vehicle v : vs) min = Math.min(min, sp.priceOf(v.price));
             items[i] = Gui.item(iconOf(vs.get(0).item), "&e&l" + names.get(i),
-                    "&7À partir de &a" + min + "€", "&7" + vs.size() + " couleur(s)");
+                    "&7À partir de &a" + (min == 0 ? "Gratuit" : min + "€"), "&7" + vs.size() + " couleur(s)");
         }
         if (multi) items[back] = Gui.item(Items.ARROW, "&c« Retour");
         Gui.open(p, "&e" + cat, rows, items, slot -> {
@@ -144,12 +159,18 @@ public final class ShopMulti {
         for (int i = 0; i < n; i++) {
             Catalog.Vehicle v = list.get(i);
             Item glass = registryItem(Catalog.COLOR_ICON.getOrDefault(v.color, "minecraft:white_stained_glass"));
-            items[i] = Gui.item(glass == Items.AIR ? Items.WHITE_STAINED_GLASS : glass, "&e&l" + v.color + " &7- &a" + v.price + "€",
-                    "&7Clique pour choisir le mode de paiement");
+            items[i] = Gui.item(glass == Items.AIR ? Items.WHITE_STAINED_GLASS : glass, "&e&l" + v.color + " &7- &a" + (sp.priceOf(v.price) == 0 ? "Gratuit" : sp.priceOf(v.price) + "€"),
+                    sp.priceOf(v.price) == 0 ? "&7Clique pour récupérer le véhicule (dotation)" : "&7Clique pour choisir le mode de paiement");
         }
         items[back] = Gui.item(Items.ARROW, "&c« Retour");
         Gui.open(p, "&0" + model, rows, items, slot -> {
-            if (slot < n) Gui.later(p, () -> openPayment(p, sp, cat, model, multi, list.get(slot)));
+            if (slot < n) Gui.later(p, () -> {
+                Catalog.Vehicle chosen = list.get(slot);
+                if (sp.priceOf(chosen.price) == 0) {   // dotation : pas de paiement
+                    p.closeContainer();
+                    buy(p, sp, chosen, Payment.Method.CASH);
+                } else openPayment(p, sp, cat, model, multi, chosen);
+            });
             else if (slot == back) Gui.later(p, () -> openModels(p, sp, cat, multi));
         });
     }
@@ -158,15 +179,16 @@ public final class ShopMulti {
     private static void openPayment(ServerPlayer p, ShopProfiles.Profile sp, String cat, String model, boolean multi, Catalog.Vehicle v) {
         List<VehicleConfig.Denom> den = VehicleConfig.currency();
         int cash = Money.count(p, den);
-        PayResult card = Payment.cardStatus(p, v.price);
+        int price = sp.priceOf(v.price);
+        PayResult card = Payment.cardStatus(p, price);
         String label = v.model + (v.color.equals("Défaut") ? "" : " (" + v.color + ")");
 
         ItemStack[] items = new ItemStack[9];
-        items[4] = Gui.item(iconOf(v.item), "&e&l" + label, "&7Prix : &a" + v.price + "€");
+        items[4] = Gui.item(iconOf(v.item), "&e&l" + label, "&7Prix : &a" + price + "€");
         Item cashIcon = VehicleConfig.item("minenorth_eurobank:bill_50e");
         items[2] = Gui.item(cashIcon == Items.AIR ? Items.GOLD_INGOT : cashIcon, "&a&lPayer en espèces",
                 "&7Espèces sur toi : &f" + cash + "€",
-                cash >= v.price ? "&aClique pour payer" : "&cEspèces insuffisantes");
+                cash >= price ? "&aClique pour payer" : "&cEspèces insuffisantes");
         Item cardIcon = VehicleConfig.item("minenorth_eurobank:bank_card");
         String cardLine = card == PayResult.OK ? "&aClique pour payer"
                 : "&c" + (card == PayResult.INSUFFICIENT_FUNDS ? "Solde insuffisant" : card.message());
@@ -190,6 +212,8 @@ public final class ShopMulti {
 
     private static void buy(ServerPlayer p, ShopProfiles.Profile sp, Catalog.Vehicle v, Payment.Method method) {
         MinecraftServer server = p.getServer();
+        if (!sp.service.isEmpty() && !dutyOk(p, sp.service)) return;     // re-vérifié à l'achat : service quitté entre-temps
+        int price = sp.priceOf(v.price);
         if (!ShopZoneData.get(server).zones.containsKey(sp.id)) {
             Msg.send(p, "&cAucune zone de pose pour ce vendeur.");
             return;
@@ -204,15 +228,17 @@ public final class ShopMulti {
             return;
         }
         List<VehicleConfig.Denom> den = VehicleConfig.currency();
-        String err = Payment.precheck(p, v.price, method, den, "pour acheter ce véhicule");
-        if (err != null) {
-            Msg.send(p, "&c" + err);
-            return;
-        }
-        Payment.Result paid = Payment.pay(p, v.price, method, den, "garage:vente");
-        if (!paid.ok()) {
-            Msg.send(p, "&c" + paid.message());
-            return;
+        if (price > 0) {
+            String err = Payment.precheck(p, price, method, den, "pour acheter ce véhicule");
+            if (err != null) {
+                Msg.send(p, "&c" + err);
+                return;
+            }
+            Payment.Result paid = Payment.pay(p, price, method, den, "garage:vente");
+            if (!paid.ok()) {
+                Msg.send(p, "&c" + paid.message());
+                return;
+            }
         }
         ItemHandlerHelper.giveItemToPlayer(p, new ItemStack(it));
 
@@ -247,7 +273,8 @@ public final class ShopMulti {
         w.itemId = v.item;
         w.expireTick = server.getTickCount() + VehicleConfig.PLACE_TIMEOUT.get() * 20L;
         WAITING.put(p.getUUID(), w);
-        Msg.send(p, "&a" + label + " achetée pour " + v.price + "€ (" + (method == Payment.Method.CARD ? "carte" : "espèces")
+        Msg.send(p, price == 0 ? "&a" + label + " : véhicule de service remis ! Pose-le sur la zone marquée."
+                : "&a" + label + " achetée pour " + price + "€ (" + (method == Payment.Method.CARD ? "carte" : "espèces")
                 + ") ! Pose ton véhicule sur la zone marquée.");
     }
 

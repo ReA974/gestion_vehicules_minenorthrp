@@ -139,11 +139,13 @@ public final class VehicleCommands {
         z.y = p.getY();
         z.z = p.getZ();
         z.radius = radius;
-        z.tag = tag;
+        // Tags spéciaux « police » / « pompier » : garage de service (agents en service uniquement, liste de véhicules séparée).
+        z.service = com.minenorth.vehicles.garage.Garage.serviceOfKeyword(tag);
+        z.tag = z.service.isEmpty() ? tag : "";
         g.zones.put(name, z);
         g.setDirty();
         Msg.send(p, "&aGarage \"" + name + "\" défini à ta position (" + radius + " blocs, "
-                + (tag.isEmpty() ? "public" : "tag requis : " + tag) + ").");
+                + (!z.service.isEmpty() ? "GARAGE " + z.service.toUpperCase(java.util.Locale.ROOT) + " : agents en service uniquement" : tag.isEmpty() ? "public" : "tag requis : " + tag) + ").");
         return 1;
     }
 
@@ -183,7 +185,7 @@ public final class VehicleCommands {
         say(s, "&eGarages définis (" + g.zones.size() + ") :");
         for (GarageData.Zone z : g.zones.values()) {
             say(s, String.format(java.util.Locale.ROOT, "&7- &f%s &8| %s | %.0f %.0f %.0f | rayon %.1f | %s | %s",
-                    z.name, z.dim, z.x, z.y, z.z, z.radius, z.tag.isEmpty() ? "public" : z.tag, z.typesLabel()));
+                    z.name, z.dim, z.x, z.y, z.z, z.radius, !z.service.isEmpty() ? z.service.toUpperCase(java.util.Locale.ROOT) + " (en service)" : z.tag.isEmpty() ? "public" : z.tag, z.typesLabel()));
         }
         return g.zones.size();
     }

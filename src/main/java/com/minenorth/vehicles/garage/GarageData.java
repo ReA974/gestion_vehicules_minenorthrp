@@ -22,6 +22,9 @@ public class GarageData extends SavedData {
         /** Types acceptés, séparés par des virgules ("terre,air,mer") ; "" = tous. */
         public String types = "";
         public double x, y, z, radius;
+        /** Garage de service : "police" ou "pompier" = réservé aux agents EN SERVICE, avec sa propre liste de véhicules
+         *  (séparée du garage civil et des autres services). "" = garage normal. */
+        public String service = "";
 
         public boolean accepts(VehicleType t) {
             if (types.isEmpty()) return true;
@@ -85,6 +88,7 @@ public class GarageData extends SavedData {
             t.putDouble("y", z.y);
             t.putDouble("z", z.z);
             t.putDouble("radius", z.radius);
+            t.putString("service", z.service);
             zl.add(t);
         }
         tag.put("zones", zl);
@@ -154,6 +158,8 @@ public class GarageData extends SavedData {
             z.y = t.getDouble("y");
             z.z = t.getDouble("z");
             z.radius = t.getDouble("radius");
+            z.service = t.getString("service");
+            if (z.service.isEmpty() && t.getBoolean("police")) z.service = "police";   // anciennes données
             d.zones.put(z.name, z);
         }
         ListTag gl = tag.getList("garages", Tag.TAG_COMPOUND);

@@ -41,10 +41,73 @@ public final class Garage {
             if (!z.dim.equals(dim)) continue;
             if (type != null && !z.accepts(type)) continue;
             if (!z.tag.isEmpty() && !p.getTags().contains(z.tag) && !p.hasPermissions(2)) continue;
+            if (!z.service.isEmpty() && !p.hasPermissions(2) && !serviceOnDuty(p, z.service)) continue;
             double dx = p.getX() - z.x, dz = p.getZ() - z.z;
             if (Math.sqrt(dx * dx + dz * dz) <= z.radius) return z;
         }
         return null;
+    }
+
+    /** Mot-clé de zone (/garagezone ... <tag>) -> service ("police", "pompier") ; "" si ce n'est pas un mot-clé de service. */
+    public static String serviceOfKeyword(String tag) {
+        if (tag == null) return "";
+        return switch (tag.toLowerCase(java.util.Locale.ROOT)) {
+            case "police" -> "police";
+            case "pompier", "pompiers", "secours", "samu" -> "pompier";
+            default -> "";
+        };
+    }
+
+    /** Agent du service demandé qui a pris son service (tablette). */
+    public static boolean serviceOnDuty(ServerPlayer p, String service) {
+        return switch (service) {
+            case "police" -> fr.minenorth.api.MineNorth.police().isPolice(p)
+                    && fr.minenorth.api.MineNorth.police().onDuty(p.getServer(), p.getUUID());
+            case "pompier" -> fr.minenorth.api.MineNorth.secours().isSecours(p)
+                    && fr.minenorth.api.MineNorth.secours().onDuty(p.getServer(), p.getUUID());
+            default -> true;
+        };
+    }
+
+    /** L'agent appartient au service (en service ou non). */
+    public static boolean serviceMember(ServerPlayer p, String service) {
+        return switch (service) {
+            case "police" -> fr.minenorth.api.MineNorth.police().isPolice(p);
+            case "pompier" -> fr.minenorth.api.MineNorth.secours().isSecours(p);
+            default -> true;
+        };
+    }
+
+    public static String serviceLabel(String service) {
+        return service.equals("pompier") ? "pompiers / SAMU" : "police";
+    }
+
+    /** Clé de la liste de véhicules du garage de service d'un joueur (séparée de son garage civil et des autres services). */
+    public static UUID serviceKey(UUID id, String service) {
+        return UUID.nameUUIDFromBytes(("minenorth:garage-" + service + ":" + id).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    /** Liste utilisée à l'endroit où se trouve le joueur : garage de service dans une zone de service, sinon son garage civil. */
+    public static UUID keyHere(ServerPlayer p) {
+        GarageData.Zone z = zoneAt(p);
+        return z != null && !z.service.isEmpty() ? serviceKey(p.getUUID(), z.service) : p.getUUID();
+    }
+
+    /** true (et message) si le joueur est dans une zone de garage de service qu'il ne peut pas utiliser (pas du service ou hors service). */
+    public static boolean serviceZoneDenied(ServerPlayer p) {
+        if (p.hasPermissions(2)) return false;
+        GarageData d = GarageData.get(p.getServer());
+        String dim = p.level().dimension().location().toString();
+        for (GarageData.Zone z : d.zones.values()) {
+            if (z.service.isEmpty() || !z.dim.equals(dim)) continue;
+            double dx = p.getX() - z.x, dz = p.getZ() - z.z;
+            if (Math.sqrt(dx * dx + dz * dz) > z.radius) continue;
+            Msg.send(p, serviceMember(p, z.service)
+                    ? "&cGarage " + serviceLabel(z.service) + " : prends d'abord ton service (tablette > prise de service)."
+                    : "&cGarage réservé aux " + serviceLabel(z.service) + ".");
+            return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ utilitaires
@@ -103,7 +166,10 @@ public final class Garage {
     /** Range le véhicule (NBT complet : pièces, inventaires, carburant, dégâts...) dans le garage de {@code target}. */
     public static boolean storeInto(ServerPlayer actor, Entity vehicle, UUID target, boolean admin) {
         GarageData data = GarageData.get(actor.getServer());
-        List<GarageData.Stored> list = data.of(target);
+        GarageData.Zone here = zoneAt(actor);
+        boolean svc = here != null && !here.service.isEmpty() && !admin;
+        UUID listKey = svc ? serviceKey(target, here.service) : target;   // zone de service : garage de service
+        List<GarageData.Stored> list = data.of(listKey);
         int max = VehicleConfig.GARAGE_MAX.get();
         if (list.size() >= max) {
             Msg.send(actor, "&cLe garage est plein (" + max + "/" + max + ") !");
@@ -126,7 +192,7 @@ public final class Garage {
         list.add(s);
         data.setDirty();
         if (target.equals(actor.getUUID())) removeOneKey(actor, s.label);
-        Msg.send(actor, "&aVéhicule rangé dans le garage, intact ! (" + list.size() + "/" + max + ")");
+        Msg.send(actor, (svc ? "&aVéhicule rangé dans le garage de service, intact ! (" : "&aVéhicule rangé dans le garage, intact ! (") + list.size() + "/" + max + ")");
         return true;
     }
 
@@ -188,12 +254,12 @@ public final class Garage {
     public static void retrieve(ServerPlayer p, int index) {
         // 1. On récupère la zone où se trouve le joueur
         if (zoneAt(p) == null) {
-            Msg.send(p, "&cTu dois être dans une zone garage.");
+            if (!serviceZoneDenied(p)) Msg.send(p, "&cTu dois être dans une zone garage.");
             return;
         }
 
         GarageData data = GarageData.get(p.getServer());
-        List<GarageData.Stored> list = data.of(p.getUUID());
+        List<GarageData.Stored> list = data.of(keyHere(p));
         if (index < 0 || index >= list.size()) return;
         GarageData.Stored s = list.get(index);
         GarageData.Zone zone = zoneAt(p, typeOf(s));
@@ -257,18 +323,23 @@ public final class Garage {
             return;
         }
         if (zoneAt(p) == null) {
-            Msg.send(p, "&cTu dois être près d'un garage pour utiliser cette commande.");
+            if (!serviceZoneDenied(p)) Msg.send(p, "&cTu dois être près d'un garage pour utiliser cette commande.");
             return;
         }
+        String svcHere = zoneAt(p).service;
+        boolean copGarage = !svcHere.isEmpty();
         // Ligne 1 : rentrer / voir le garage. Ligne 2 : assurance / filtre / vente.
         ItemStack[] items = new ItemStack[18];
         items[2] = Gui.item(Items.PAPER, "&e&lRentrer mon véhicule", "&7Monte dans ton véhicule ou reste à côté.");
         items[6] = Gui.item(Items.PAPER, "&e&lVoir mon garage");
-        items[11] = Gui.item(Items.SHIELD, "&b&lAssurer mes véhicules", "&7Paie une assurance : si le véhicule est détruit,",
-                "&7il revient seul dans ton garage (une seule fois).");
+        if (!copGarage) {   // assurance et vente concernent le garage civil : pas dans un garage de police
+            items[11] = Gui.item(Items.SHIELD, "&b&lAssurer mes véhicules", "&7Paie une assurance : si le véhicule est détruit,",
+                    "&7il revient seul dans ton garage (une seule fois).");
+            items[15] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
+        }
         items[13] = filterItem(p);
-        items[15] = Gui.item(Items.EMERALD, "&a&lVendre un véhicule", "&7Vends un véhicule de ton garage", "&7(avec sa plaque) à un autre joueur.");
-        Gui.open(p, "&aGarage", 2, items, slot -> {
+        Gui.open(p, copGarage ? "&9Garage " + serviceLabel(svcHere) : "&aGarage", 2, items, slot -> {
+            if (copGarage && (slot == 11 || slot == 15)) return;
             if (slot == 2) Gui.later(p, () -> {
                 p.closeContainer();
                 storeNearby(p);
@@ -286,7 +357,7 @@ public final class Garage {
     /** Proposition affichée quand on entre dans une zone garage à bord d'un véhicule. */
     public static void promptStore(ServerPlayer p, Entity vehicle) {
         GarageData data = GarageData.get(p.getServer());
-        int n = data.of(p.getUUID()).size();
+        int n = data.of(keyHere(p)).size();
         int max = VehicleConfig.GARAGE_MAX.get();
         CompoundTag snap = MtsBridge.snapshot(vehicle);
         String id = MtsBridge.itemId(snap);
@@ -327,7 +398,7 @@ public final class Garage {
 
     private static ItemStack filterItem(ServerPlayer p) {
         VehicleType filter = FILTER.get(p.getUUID());
-        List<GarageData.Stored> all = GarageData.get(p.getServer()).of(p.getUUID());
+        List<GarageData.Stored> all = GarageData.get(p.getServer()).of(keyHere(p));
         return Gui.item(filter == null ? Items.COMPASS : filter == VehicleType.AIR ? Items.FEATHER : filter == VehicleType.MER ? Items.WATER_BUCKET : Items.MINECART,
                 "&e&lFiltre : " + (filter == null ? "&fTous" : filter.tag()),
                 "&7Terrestre : &f" + count(all, VehicleType.TERRE) + " &7| Aérien : &f" + count(all, VehicleType.AIR) + " &7| Maritime : &f" + count(all, VehicleType.MER),
@@ -336,9 +407,9 @@ public final class Garage {
 
     public static void openList(ServerPlayer p) {
         GarageData data = GarageData.get(p.getServer());
-        List<GarageData.Stored> all = data.of(p.getUUID());
+        List<GarageData.Stored> all = data.of(keyHere(p));
         if (all.isEmpty()) {
-            Msg.send(p, "&cTon garage est vide, aucun véhicule à récupérer.");
+            Msg.send(p, zoneAt(p) != null && !zoneAt(p).service.isEmpty() ? "&cTon garage de service est vide." : "&cTon garage est vide, aucun véhicule à récupérer.");
             return;
         }
         VehicleType filter = FILTER.get(p.getUUID());
