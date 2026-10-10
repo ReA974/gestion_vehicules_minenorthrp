@@ -26,6 +26,10 @@ public final class VehicleConfig {
     public static final ForgeConfigSpec.ConfigValue<String> POLICE_TAG;
     public static final ForgeConfigSpec.BooleanValue UNSTUCK_REQUIRE_BUGGED;
     public static final ForgeConfigSpec.IntValue UNSTUCK_RADIUS, UNSTUCK_COOLDOWN;
+    public static final ForgeConfigSpec.DoubleValue PUMP_RADIUS, PUMP_PRICE_LITER, PUMP_LITERS_PER_ITEM, PUMP_ITEM_PRICE;
+    public static final ForgeConfigSpec.IntValue PUMP_MB_PER_LITER;
+    public static final ForgeConfigSpec.BooleanValue CHARGERS_ALWAYS_FULL;
+    public static final ForgeConfigSpec.ConfigValue<String> PUMP_ITEM, PUMP_FLUID;
     public static final ForgeConfigSpec.DoubleValue UNSTUCK_TOLERANCE;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> UNSTUCK_ROADS;
     public static final ForgeConfigSpec.BooleanValue REGISTRY_JSON;
@@ -118,6 +122,26 @@ public final class VehicleConfig {
         UNSTUCK_COOLDOWN = b.comment("Ticks minimum entre deux utilisations par un même joueur").defineInRange("cooldownTicks", 20, 0, 1200);
         UNSTUCK_ROADS = b.comment("Préfixes d'id de blocs considérés comme route (mod Roads 'n' Vehicles). Les escaliers sont ignorés.")
                 .defineList("roadBlocks", Arrays.asList("roads-n-vehicles:asphalt"), o -> o instanceof String);
+        b.pop();
+
+        b.comment("Pompes à carburant MTS : clic droit = menu MineNorth (plein payant, remplissage avec l'essence du mod Récolte)").push("pompe");
+        PUMP_RADIUS = b.comment("Distance max (blocs) entre la pompe et le véhicule à servir")
+                .defineInRange("vehicleRadius", 8.0, 2.0, 32.0);
+        PUMP_MB_PER_LITER = b.comment("Combien de mB de fluide MTS font 1 « litre » (MTS affiche le stock en seaux de 1000 mB : 1000 = 1 litre par seau)")
+                .defineInRange("mbPerLiter", 1000, 1, 100000);
+        PUMP_PRICE_LITER = b.comment("PRIX DE VENTE du carburant au conducteur, en € par litre (0 = gratuit). L'argent va au trésor.")
+                .defineInRange("pricePerLiter", 3.0, 0.0, 100000.0);
+        PUMP_ITEM = b.comment("Item versé pour remplir la pompe (essence raffinée du mod Récolte)")
+                .define("fillItem", "minenorth_harvest:gasoline");
+        PUMP_LITERS_PER_ITEM = b.comment("Litres de carburant apportés par 1 item d'essence raffinée")
+                .defineInRange("litersPerItem", 2.0, 0.01, 100000.0);
+        PUMP_ITEM_PRICE = b.comment("PRIX D'ACHAT de l'essence au joueur qui remplit la pompe, en € par item (0 = rien). Versé par le trésor.")
+                .defineInRange("pricePerItem", 4.0, 0.0, 100000.0);
+        PUMP_FLUID = b.comment("Fluide MTS mis dans une pompe vide quand on la remplit (doit être accepté par les moteurs : voir la config MTS)")
+                .define("fluid", "gasoline");
+        CHARGERS_ALWAYS_FULL = b.comment("Bornes de recharge électriques MTS (décor « charger », ex. gvp ev_charger) : toujours pleines, 24h/24, sans courant ni achat.",
+                        "Appliqué toutes les secondes aux bornes proches d'un joueur. false = fonctionnement MTS normal (alimentation Forge Energy).")
+                .define("chargersAlwaysFull", true);
         b.pop();
 
         SPEC = b.build();
