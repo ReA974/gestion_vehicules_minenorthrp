@@ -114,6 +114,22 @@ public final class MtsBridge {
         return field(field(e, "entity"), "outOfHealth") instanceof Boolean b && b;
     }
 
+    /** Points de vie du modèle (définition MTS : general.health), 0 si illisible. */
+    public static double health(Entity e) {
+        return field(field(field(field(e, "entity"), "definition"), "general"), "health") instanceof Number n ? n.doubleValue() : 0;
+    }
+
+    /** Plus grande valeur numérique de clé « damage » dans le NBT (dégâts du véhicule, où qu'ils soient rangés), 0 si absente. */
+    public static double damageIn(CompoundTag t) {
+        double max = 0;
+        for (String k : t.getAllKeys()) {
+            net.minecraft.nbt.Tag v = t.get(k);
+            if (v instanceof CompoundTag c) max = Math.max(max, damageIn(c));
+            else if (k.equals("damage") && v instanceof net.minecraft.nbt.NumericTag n) max = Math.max(max, n.getAsDouble());
+        }
+        return max;
+    }
+
     /** Remet à zéro les dégâts d'un NBT de véhicule sauvegardé (variable « damage », où qu'elle soit rangée). */
     public static void repair(CompoundTag t) {
         for (String k : new java.util.ArrayList<>(t.getAllKeys())) {
