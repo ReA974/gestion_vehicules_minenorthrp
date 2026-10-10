@@ -43,6 +43,9 @@ public class PlateRegistry extends SavedData {
         public String lastName = "", firstName = "", birthDate = "", birthPlace = "", nationality = "", cardNumber = "";
         public int price;
         public long time;
+        /** Véhicule détruit sans assurance (seulement si la config garde les entrées au lieu de les supprimer). */
+        public boolean destroyed;
+        public long destroyedTime;
 
         /** « Prénom NOM », sinon le pseudo. */
         public String displayName() {
@@ -101,6 +104,15 @@ public class PlateRegistry extends SavedData {
         return r;
     }
 
+    /** Véhicule détruit non assuré : supprime l'entrée du fichier (remove = true) ou la marque détruite (remove = false). */
+    public boolean wreck(MinecraftServer server, Entry e, boolean remove) {
+        if (e == null || !entries.contains(e)) return false;
+        if (remove) entries.remove(e);
+        else { e.destroyed = true; e.destroyedTime = System.currentTimeMillis(); }
+        changed(server);
+        return true;
+    }
+
     /** Change le propriétaire d'une plaque (revente). */
     public boolean transfer(MinecraftServer server, String plate, UUID owner, String ownerName) {
         return transfer(server, plate, owner, ownerName, -1, null);
@@ -153,6 +165,8 @@ public class PlateRegistry extends SavedData {
                 o.addProperty("prix", e.price);
                 o.addProperty("paiement", e.method);
                 o.addProperty("date_achat", fmt.format(new Date(e.time)));
+                o.addProperty("detruit", e.destroyed);
+                if (e.destroyed) o.addProperty("date_destruction", fmt.format(new Date(e.destroyedTime)));
                 arr.add(o);
             }
             Path file = server.getWorldPath(LevelResource.ROOT).resolve(NAME + ".json");
@@ -183,6 +197,8 @@ public class PlateRegistry extends SavedData {
             t.putString("card", e.cardNumber);
             t.putInt("price", e.price);
             t.putLong("time", e.time);
+            t.putBoolean("destroyed", e.destroyed);
+            t.putLong("destroyedTime", e.destroyedTime);
             list.add(t);
         }
         tag.put("entries", list);
@@ -211,6 +227,8 @@ public class PlateRegistry extends SavedData {
             e.cardNumber = t.getString("card");
             e.price = t.getInt("price");
             e.time = t.getLong("time");
+            e.destroyed = t.getBoolean("destroyed");
+            e.destroyedTime = t.getLong("destroyedTime");
             r.entries.add(e);
         }
         return r;

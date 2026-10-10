@@ -33,6 +33,7 @@ public final class VehicleConfig {
     public static final ForgeConfigSpec.DoubleValue UNSTUCK_TOLERANCE;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> UNSTUCK_ROADS;
     public static final ForgeConfigSpec.BooleanValue REGISTRY_JSON;
+    public static final ForgeConfigSpec.BooleanValue REGISTRY_REMOVE_DESTROYED;
 
     public record Denom(Item item, int value) {}
 
@@ -111,6 +112,9 @@ public final class VehicleConfig {
                 .define("policeTag", "police.check");
         REGISTRY_JSON = b.comment("Exporter aussi le fichier en clair dans <monde>/minenorth_immatriculations.json")
                 .define("exportJson", true);
+        REGISTRY_REMOVE_DESTROYED = b.comment("Véhicule détruit SANS assurance, avec sa plaque d'origine posée : true = l'entrée est supprimée du fichier des immatriculations,",
+                        "false = elle reste mais est marquée « détruit » (champ detruit dans le JSON). Un véhicule assuré revient au garage : sa plaque ne bouge pas.")
+                .define("supprimerSiDetruit", true);
         b.pop();
 
         b.comment("Kit de dépannage : téléporte un véhicule bloqué sur l'asphalte le plus proche (l'item est consommé)").push("depannage");
